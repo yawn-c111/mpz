@@ -156,12 +156,7 @@ where
 
 /// A random correlated oblivious transfer receiver.
 #[async_trait]
-pub trait RandomCOTReceiver<Ctx, T, U>
-where
-    Ctx: Context,
-    T: Send + Sync,
-    U: Send + Sync,
-{
+pub trait RandomCOTReceiver<Ctx, T, U> {
     /// Obliviously receives correlated messages with random choices.
     ///
     /// Returns a tuple of the choices and the messages, respectively.
@@ -180,11 +175,7 @@ where
 /// An oblivious transfer sender that is committed to its messages and can reveal them
 /// to the receiver to verify them.
 #[async_trait]
-pub trait CommittedOTSender<Ctx, T>: OTSender<Ctx, T>
-where
-    Ctx: Context,
-    T: Send + Sync,
-{
+pub trait CommittedOTSender<Ctx, T>: OTSender<Ctx, T> {
     /// Reveals all messages sent to the receiver.
     ///
     /// # Warning

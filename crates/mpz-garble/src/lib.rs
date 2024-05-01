@@ -15,18 +15,18 @@ use mpz_circuits::{
 };
 
 pub mod config;
-pub(crate) mod evaluator;
-pub(crate) mod generator;
+// pub(crate) mod evaluator;
+// pub(crate) mod generator;
 pub(crate) mod internal_circuits;
 pub(crate) mod memory;
 pub mod ot;
-pub mod protocol;
+// pub mod protocol;
 mod threadpool;
 pub mod value;
 
-pub use evaluator::{Evaluator, EvaluatorConfig, EvaluatorConfigBuilder, EvaluatorError};
-pub use generator::{Generator, GeneratorConfig, GeneratorConfigBuilder, GeneratorError};
-pub use memory::{AssignedValues, ValueMemory};
+// pub use evaluator::{Evaluator, EvaluatorConfig, EvaluatorConfigBuilder, EvaluatorError};
+// pub use generator::{Generator, GeneratorConfig, GeneratorConfigBuilder, GeneratorError};
+pub use memory::{AssignedValues, EncodingMemoryError, ValueMemory};
 pub use threadpool::ThreadPool;
 
 use utils::id::NestedId;

@@ -329,6 +329,7 @@ impl From<u64> for EncodingId {
 /// Errors which can occur when registering an encoding.
 #[derive(Debug, thiserror::Error)]
 pub enum EncodingMemoryError {
+    /// The encoding for a value is already defined.
     #[error("encoding for value {0:?} is already defined")]
     DuplicateId(ValueId),
 }

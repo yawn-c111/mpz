@@ -130,80 +130,80 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    use crate::{protocol::deap::mock::create_mock_deap_vm, Decode, Execute, Vm, VmError};
-    use mpz_circuits::circuits::AES128;
+//     use crate::{protocol::deap::mock::create_mock_deap_vm, Decode, Execute, Vm, VmError};
+//     use mpz_circuits::circuits::AES128;
 
-    async fn test_fn_leader<T: Thread + Execute + Decode>(
-        thread: &mut T,
-        n: usize,
-    ) -> Result<[u8; 16], VmError> {
-        let key = thread.new_private_input::<[u8; 16]>(&format!("key/{n}"))?;
-        let msg = thread.new_private_input::<[u8; 16]>(&format!("msg/{n}"))?;
-        let ciphertext = thread.new_output::<[u8; 16]>(&format!("ciphertext/{n}"))?;
+//     async fn test_fn_leader<T: Thread + Execute + Decode>(
+//         thread: &mut T,
+//         n: usize,
+//     ) -> Result<[u8; 16], VmError> {
+//         let key = thread.new_private_input::<[u8; 16]>(&format!("key/{n}"))?;
+//         let msg = thread.new_private_input::<[u8; 16]>(&format!("msg/{n}"))?;
+//         let ciphertext = thread.new_output::<[u8; 16]>(&format!("ciphertext/{n}"))?;
 
-        thread.assign(&key, [0u8; 16])?;
-        thread.assign(&msg, [0u8; 16])?;
+//         thread.assign(&key, [0u8; 16])?;
+//         thread.assign(&msg, [0u8; 16])?;
 
-        thread
-            .execute(AES128.clone(), &[key, msg], &[ciphertext.clone()])
-            .await?;
+//         thread
+//             .execute(AES128.clone(), &[key, msg], &[ciphertext.clone()])
+//             .await?;
 
-        let mut values = thread.decode(&[ciphertext]).await?;
+//         let mut values = thread.decode(&[ciphertext]).await?;
 
-        Ok(values.pop().unwrap().try_into().unwrap())
-    }
+//         Ok(values.pop().unwrap().try_into().unwrap())
+//     }
 
-    async fn test_fn_follower<T: Thread + Execute + Decode>(
-        thread: &mut T,
-        n: usize,
-    ) -> Result<[u8; 16], VmError> {
-        let key = thread.new_blind_input::<[u8; 16]>(&format!("key/{n}"))?;
-        let msg = thread.new_blind_input::<[u8; 16]>(&format!("msg/{n}"))?;
-        let ciphertext = thread.new_output::<[u8; 16]>(&format!("ciphertext/{n}"))?;
+//     async fn test_fn_follower<T: Thread + Execute + Decode>(
+//         thread: &mut T,
+//         n: usize,
+//     ) -> Result<[u8; 16], VmError> {
+//         let key = thread.new_blind_input::<[u8; 16]>(&format!("key/{n}"))?;
+//         let msg = thread.new_blind_input::<[u8; 16]>(&format!("msg/{n}"))?;
+//         let ciphertext = thread.new_output::<[u8; 16]>(&format!("ciphertext/{n}"))?;
 
-        thread
-            .execute(AES128.clone(), &[key, msg], &[ciphertext.clone()])
-            .await?;
+//         thread
+//             .execute(AES128.clone(), &[key, msg], &[ciphertext.clone()])
+//             .await?;
 
-        let mut values = thread.decode(&[ciphertext]).await?;
+//         let mut values = thread.decode(&[ciphertext]).await?;
 
-        Ok(values.pop().unwrap().try_into().unwrap())
-    }
+//         Ok(values.pop().unwrap().try_into().unwrap())
+//     }
 
-    #[tokio::test]
-    async fn test_thread_pool() {
-        let (mut leader, mut follower) = create_mock_deap_vm("test_vm").await;
+//     #[tokio::test]
+//     async fn test_thread_pool() {
+//         let (mut leader, mut follower) = create_mock_deap_vm("test_vm").await;
 
-        let (mut leader_pool, mut follower_pool) = futures::try_join!(
-            leader.new_thread_pool("test_pool", 4),
-            follower.new_thread_pool("test_pool", 4),
-        )
-        .unwrap();
+//         let (mut leader_pool, mut follower_pool) = futures::try_join!(
+//             leader.new_thread_pool("test_pool", 4),
+//             follower.new_thread_pool("test_pool", 4),
+//         )
+//         .unwrap();
 
-        let mut leader_scope = leader_pool.new_scope();
-        let mut follower_scope = follower_pool.new_scope();
+//         let mut leader_scope = leader_pool.new_scope();
+//         let mut follower_scope = follower_pool.new_scope();
 
-        for block in 0..10 {
-            leader_scope.push(move |thread| Box::pin(test_fn_leader(thread, block)));
-            follower_scope.push(move |thread| Box::pin(test_fn_follower(thread, block)));
-        }
+//         for block in 0..10 {
+//             leader_scope.push(move |thread| Box::pin(test_fn_leader(thread, block)));
+//             follower_scope.push(move |thread| Box::pin(test_fn_follower(thread, block)));
+//         }
 
-        let (leader_results, follower_results) =
-            futures::join!(leader_scope.wait(), follower_scope.wait());
+//         let (leader_results, follower_results) =
+//             futures::join!(leader_scope.wait(), follower_scope.wait());
 
-        let leader_results = leader_results
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-        let follower_results = follower_results
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+//         let leader_results = leader_results
+//             .into_iter()
+//             .collect::<Result<Vec<_>, _>>()
+//             .unwrap();
+//         let follower_results = follower_results
+//             .into_iter()
+//             .collect::<Result<Vec<_>, _>>()
+//             .unwrap();
 
-        assert_eq!(leader_results, follower_results);
-    }
-}
+//         assert_eq!(leader_results, follower_results);
+//     }
+// }
