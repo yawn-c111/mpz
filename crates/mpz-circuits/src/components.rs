@@ -1,96 +1,12 @@
-use std::{fmt::Display, marker::PhantomData};
+pub(crate) mod binary;
 
-/// A binary logic gate.
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[repr(u8)]
-#[allow(missing_docs)]
-pub enum Gate {
-    /// XOR gate.
-    Xor {
-        x: Node<Sink>,
-        y: Node<Sink>,
-        z: Node<Feed>,
-    },
-    /// AND gate.
-    And {
-        x: Node<Sink>,
-        y: Node<Sink>,
-        z: Node<Feed>,
-    },
-    /// Inverter gate.
-    Inv { x: Node<Sink>, z: Node<Feed> },
-}
+use std::{
+    fmt::Display,
+    marker::PhantomData,
+    ops::{Index, IndexMut},
+};
 
-impl Gate {
-    /// Returns the type of the gate.
-    pub fn gate_type(&self) -> GateType {
-        match self {
-            Gate::Xor { .. } => GateType::Xor,
-            Gate::And { .. } => GateType::And,
-            Gate::Inv { .. } => GateType::Inv,
-        }
-    }
-
-    /// Returns the x input of the gate.
-    pub fn x(&self) -> Node<Sink> {
-        match self {
-            Gate::Xor { x, .. } => *x,
-            Gate::And { x, .. } => *x,
-            Gate::Inv { x, .. } => *x,
-        }
-    }
-
-    /// Returns the y input of the gate.
-    pub fn y(&self) -> Option<Node<Sink>> {
-        match self {
-            Gate::Xor { y, .. } => Some(*y),
-            Gate::And { y, .. } => Some(*y),
-            Gate::Inv { .. } => None,
-        }
-    }
-
-    /// Returns the z output of the gate.
-    pub fn z(&self) -> Node<Feed> {
-        match self {
-            Gate::Xor { z, .. } => *z,
-            Gate::And { z, .. } => *z,
-            Gate::Inv { z, .. } => *z,
-        }
-    }
-
-    /// Shifts all the node IDs of the gate by the given offset.
-    #[inline]
-    pub(crate) fn shift_left(&mut self, offset: usize) {
-        match self {
-            Gate::Xor { x, y, z } => {
-                x.id -= offset;
-                y.id -= offset;
-                z.id -= offset;
-            }
-            Gate::And { x, y, z } => {
-                x.id -= offset;
-                y.id -= offset;
-                z.id -= offset;
-            }
-            Gate::Inv { x, z } => {
-                x.id -= offset;
-                z.id -= offset;
-            }
-        }
-    }
-}
-
-/// The type of a gate.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GateType {
-    /// XOR gate.
-    Xor,
-    /// AND gate.
-    And,
-    /// Inverter gate.
-    Inv,
-}
+use mpz_memory::{Memory, MemoryMut};
 
 /// A feed in a circuit.
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -163,5 +79,52 @@ impl From<Node<Sink>> for Node<Feed> {
             id: node.id,
             _pd: PhantomData,
         }
+    }
+}
+
+/// Registers used in a circuit evaluation.
+#[derive(Debug, Default)]
+pub(crate) struct Registers<T>(Vec<T>);
+
+impl<T: Default> Registers<T> {
+    /// Creates a new set of registers with the given count.
+    pub(crate) fn new(count: usize) -> Self {
+        Self((0..count).map(|_| T::default()).collect())
+    }
+}
+
+impl<T> Memory<T> for Registers<T> {
+    type Id = Node<Feed>;
+
+    fn get(&self, id: &Self::Id) -> Option<&T> {
+        self.0.get(&id.id)
+    }
+
+    fn alloc(&mut self, value: T) -> Self::Id {
+        let id = self.0.len();
+        self.0.push(value);
+        Node::new(id)
+    }
+}
+
+impl<T> MemoryMut<T> for Registers<T> {
+    fn set(&mut self, id: &Self::Id, value: T) {
+        self.0[id.id] = value;
+    }
+}
+
+impl<T, U> Index<Node<T>> for Registers<U> {
+    type Output = U;
+
+    #[inline]
+    fn index(&self, index: Node<T>) -> &Self::Output {
+        self.0.index(index.id)
+    }
+}
+
+impl<T, U> IndexMut<Node<T>> for Registers<U> {
+    #[inline]
+    fn index_mut(&mut self, index: Node<T>) -> &mut Self::Output {
+        self.0.index_mut(index.id)
     }
 }

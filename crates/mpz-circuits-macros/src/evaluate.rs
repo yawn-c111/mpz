@@ -46,19 +46,38 @@ pub(crate) fn evaluate_impl(item: TokenStream) -> TokenStream {
         _ => 1,
     };
 
-    let return_expr: Expr = if return_count > 1 {
-        let expr = format!(
-            "({})",
-            "outputs.pop().unwrap().try_into()?, ".repeat(return_count)
-        );
-        syn::parse_str(&expr).unwrap()
-    } else {
-        parse_quote!(outputs.pop().unwrap().try_into()?)
+    let return_expr: Expr = match &return_type {
+        Type::Tuple(tuple) => {
+            let ids = 0..tuple.elems.len();
+            let elems = tuple.elems.iter();
+            parse_quote!(
+                (
+                    #(
+                        <#elems>::try_from(outputs.pop().unwrap()).map_err(|e| {
+                            CircuitError::InvalidOutputType {
+                                id: #ids,
+                                expected: e.expected(),
+                                actual: e.actual(),
+                            }
+                        })?
+                    ),*
+                )
+            )
+        }
+        ty => {
+            parse_quote!(<#ty>::try_from(outputs.pop().unwrap()).map_err(|e| {
+                CircuitError::InvalidOutputType {
+                    id: 0,
+                    expected: e.expected(),
+                    actual: e.actual(),
+                }
+            })?)
+        }
     };
 
     quote! {
         {
-            use mpz_circuits::{CircuitError, types::Value};
+            use mpz_circuits::CircuitError;
 
             let eval = || -> Result<#return_type, CircuitError> {
                 if #circ.outputs().len() != #return_count {

@@ -2,7 +2,7 @@ use std::ops::{BitAnd, BitOr, BitXor, Not};
 
 use crate::{
     components::{Feed, Node},
-    types::Bit,
+    repr::binary::Bit,
     BuilderState, Tracer,
 };
 
@@ -221,7 +221,7 @@ impl<'a> BitXor for Tracer<'a, Bit> {
             .borrow_mut()
             .add_xor_gate(self.node(), rhs.node());
 
-        Tracer::new(self.state, Bit::new([out]))
+        Tracer::new(self.state, Bit::new(out))
     }
 }
 
@@ -234,7 +234,7 @@ impl<'a> BitAnd for Tracer<'a, Bit> {
             .borrow_mut()
             .add_and_gate(self.node(), rhs.node());
 
-        Tracer::new(self.state, Bit::new([out]))
+        Tracer::new(self.state, Bit::new(out))
     }
 }
 
@@ -244,7 +244,7 @@ impl<'a> Not for Tracer<'a, Bit> {
     fn not(self) -> Self::Output {
         let out = self.state.borrow_mut().add_inv_gate(self.node());
 
-        Tracer::new(self.state, Bit::new([out]))
+        Tracer::new(self.state, Bit::new(out))
     }
 }
 
@@ -262,7 +262,7 @@ mod tests {
 
     use super::*;
 
-    use crate::{types::U8, CircuitBuilder};
+    use crate::{repr::binary::U8, CircuitBuilder};
 
     #[test]
     fn test_wrapping_add() {
@@ -273,8 +273,8 @@ mod tests {
 
         let sum = U8::new(const_wrapping_add_nbit(
             &mut builder.state().borrow_mut(),
-            a.nodes(),
-            b.nodes(),
+            a.into_inner(),
+            b.into_inner(),
         ));
 
         builder.add_output(sum);
@@ -299,11 +299,14 @@ mod tests {
         let a = builder.add_input::<u8>().to_inner();
         let b = builder.add_input::<u8>().to_inner();
 
-        let (rem, borrow) =
-            const_wrapping_sub_nbit(&mut builder.state().borrow_mut(), a.nodes(), b.nodes());
+        let (rem, borrow) = const_wrapping_sub_nbit(
+            &mut builder.state().borrow_mut(),
+            a.into_inner(),
+            b.into_inner(),
+        );
 
         let rem = U8::new(rem);
-        let borrow = Bit::new([borrow]);
+        let borrow = Bit::new(borrow);
 
         builder.add_output(rem);
         builder.add_output(borrow);
@@ -334,9 +337,9 @@ mod tests {
         let out = U8::new(
             switch_nbit(
                 &mut builder.state().borrow_mut(),
-                a.nodes().as_slice(),
-                b.nodes().as_slice(),
-                toggle.nodes()[0],
+                a.into_inner().as_slice(),
+                b.into_inner().as_slice(),
+                toggle.into_inner(),
             )
             .try_into()
             .unwrap(),

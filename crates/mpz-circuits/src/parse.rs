@@ -1,8 +1,9 @@
 use crate::{
-    components::{Feed, GateType, Node},
-    types::ValueType,
+    components::{binary::GateType, Feed, Node},
+    repr::binary::ValueRepr,
     Circuit, CircuitBuilder,
 };
+use mpz_binary_types::{BitLength, ValueType};
 use regex::{Captures, Regex};
 use std::collections::HashMap;
 
@@ -51,10 +52,10 @@ impl Circuit {
         let mut input_len = 0;
         for input in inputs {
             let input = builder.add_input_by_type(input.clone());
-            for (node, old_id) in input.iter().zip(input_len..input_len + input.len()) {
+            for (node, old_id) in input.iter().zip(input_len..input_len + input.bit_length()) {
                 feed_map.insert(old_id, *node);
             }
-            input_len += input.len();
+            input_len += input.bit_length();
         }
 
         let mut state = builder.state().borrow_mut();
@@ -103,7 +104,7 @@ impl Circuit {
 
         for output in outputs.iter().rev() {
             let feeds = feed_ids
-                .drain(feed_ids.len() - output.len()..)
+                .drain(feed_ids.len() - output.bit_length()..)
                 .map(|id| {
                     *feed_map
                         .get(&id)
@@ -111,7 +112,7 @@ impl Circuit {
                 })
                 .collect::<Vec<Node<Feed>>>();
 
-            let output = output.to_bin_repr(&feeds).unwrap();
+            let output = ValueRepr::try_from_ids(*output, feeds).unwrap();
             builder.add_output(output);
         }
 
@@ -158,12 +159,14 @@ mod tests {
 
     use super::*;
 
+    use crate::PrimitiveType;
+
     #[test]
     fn test_parse_adder_64() {
         let circ = Circuit::parse(
             "circuits/bristol/adder64_reverse.txt",
-            &[ValueType::U64, ValueType::U64],
-            &[ValueType::U64],
+            &[PrimitiveType::U64.into(), PrimitiveType::U64.into()],
+            &[PrimitiveType::U64.into()],
         )
         .unwrap();
 
@@ -184,10 +187,19 @@ mod tests {
         let circ = Circuit::parse(
             "circuits/bristol/aes_128_reverse.txt",
             &[
-                ValueType::Array(Box::new(ValueType::U8), 16),
-                ValueType::Array(Box::new(ValueType::U8), 16),
+                ValueType::Array {
+                    ty: PrimitiveType::U8,
+                    len: 16,
+                },
+                ValueType::Array {
+                    ty: PrimitiveType::U8,
+                    len: 16,
+                },
             ],
-            &[ValueType::Array(Box::new(ValueType::U8), 16)],
+            &[ValueType::Array {
+                ty: PrimitiveType::U8,
+                len: 16,
+            }],
         )
         .unwrap()
         .reverse_input(0)
@@ -216,10 +228,19 @@ mod tests {
         let circ = Circuit::parse(
             "circuits/bristol/sha256_reverse.txt",
             &[
-                ValueType::Array(Box::new(ValueType::U8), 64),
-                ValueType::Array(Box::new(ValueType::U32), 8),
+                ValueType::Array {
+                    ty: PrimitiveType::U8,
+                    len: 64,
+                },
+                ValueType::Array {
+                    ty: PrimitiveType::U32,
+                    len: 8,
+                },
             ],
-            &[ValueType::Array(Box::new(ValueType::U32), 8)],
+            &[ValueType::Array {
+                ty: PrimitiveType::U32,
+                len: 8,
+            }],
         )
         .unwrap()
         .reverse_inputs()

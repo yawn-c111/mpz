@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use mpz_circuits::{circuits::build_sha256, types::Value};
+use mpz_circuits::circuits::build_sha256;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let length = 512;
@@ -13,10 +13,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         bench.iter(|| {
             black_box(
                 sha256
-                    .evaluate(&[
-                        Value::Array(vec![Value::U32(0); 8]),
-                        Value::Array(vec![Value::U8(0); length]),
-                    ])
+                    .evaluate(&[[0u32; 8].into(), vec![0u8; length].into()])
                     .unwrap(),
             )
         })

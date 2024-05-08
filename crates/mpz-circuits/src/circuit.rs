@@ -1,8 +1,9 @@
-use itybity::IntoBits;
+use mpz_binary_types::{Value, ValueType};
+use mpz_memory::repr::Repr;
 
 use crate::{
-    components::Gate,
-    types::{BinaryRepr, TypeError, Value},
+    components::{binary::Gate, Registers},
+    repr::binary::ValueRepr,
 };
 
 /// An error that can occur when performing operations with a circuit.
@@ -13,16 +14,26 @@ pub enum CircuitError {
     InvalidInputCount(usize, usize),
     #[error("Invalid number of outputs: expected {0}, got {1}")]
     InvalidOutputCount(usize, usize),
-    #[error(transparent)]
-    TypeError(#[from] TypeError),
+    #[error("Invalid input type {id}: expected {expected}, got {actual}")]
+    InvalidInputType {
+        id: usize,
+        expected: ValueType,
+        actual: ValueType,
+    },
+    #[error("Invalid output type {id}: expected {expected}, got {actual}")]
+    InvalidOutputType {
+        id: usize,
+        expected: ValueType,
+        actual: ValueType,
+    },
 }
 
 /// A binary circuit.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Circuit {
-    pub(crate) inputs: Vec<BinaryRepr>,
-    pub(crate) outputs: Vec<BinaryRepr>,
+    pub(crate) inputs: Vec<ValueRepr>,
+    pub(crate) outputs: Vec<ValueRepr>,
     pub(crate) gates: Vec<Gate>,
     pub(crate) feed_count: usize,
 
@@ -32,12 +43,12 @@ pub struct Circuit {
 
 impl Circuit {
     /// Returns a reference to the inputs of the circuit.
-    pub fn inputs(&self) -> &[BinaryRepr] {
+    pub fn inputs(&self) -> &[ValueRepr] {
         &self.inputs
     }
 
     /// Returns a reference to the outputs of the circuit.
-    pub fn outputs(&self) -> &[BinaryRepr] {
+    pub fn outputs(&self) -> &[ValueRepr] {
         &self.outputs
     }
 
@@ -79,7 +90,7 @@ impl Circuit {
     ///
     /// The circuit with the input reversed.
     pub fn reverse_input(mut self, idx: usize) -> Self {
-        if let Some(BinaryRepr::Array(arr)) = self.inputs.get_mut(idx) {
+        if let Some(ValueRepr::Array(arr)) = self.inputs.get_mut(idx) {
             arr.reverse();
         }
         self
@@ -103,7 +114,7 @@ impl Circuit {
     ///
     /// The circuit with the output reversed.
     pub fn reverse_output(mut self, idx: usize) -> Self {
-        if let Some(BinaryRepr::Array(arr)) = self.outputs.get_mut(idx) {
+        if let Some(ValueRepr::Array(arr)) = self.outputs.get_mut(idx) {
             arr.reverse();
         }
         self
@@ -126,39 +137,38 @@ impl Circuit {
             ));
         }
 
-        let mut feeds: Vec<Option<bool>> = vec![None; self.feed_count];
+        let mut registers = Registers::new(self.feed_count);
 
-        for (input, value) in self.inputs.iter().zip(values) {
+        for (id, (input, value)) in self.inputs.iter().zip(values).enumerate() {
             if input.value_type() != value.value_type() {
-                return Err(TypeError::UnexpectedType {
+                return Err(CircuitError::InvalidInputType {
+                    id,
                     expected: input.value_type(),
                     actual: value.value_type(),
-                })?;
+                });
             }
 
-            for (node, bit) in input.iter().zip(value.clone().into_iter_lsb0()) {
-                feeds[node.id] = Some(bit);
-            }
+            input.set(&mut registers, value.clone());
         }
 
         for gate in self.gates.iter() {
-            match gate {
+            match *gate {
                 Gate::Xor { x, y, z } => {
-                    let x = feeds[x.id].expect("Feed should be set");
-                    let y = feeds[y.id].expect("Feed should be set");
+                    let x = registers[x];
+                    let y = registers[y];
 
-                    feeds[z.id] = Some(x ^ y);
+                    registers[z] = x ^ y;
                 }
                 Gate::And { x, y, z } => {
-                    let x = feeds[x.id].expect("Feed should be set");
-                    let y = feeds[y.id].expect("Feed should be set");
+                    let x = registers[x];
+                    let y = registers[y];
 
-                    feeds[z.id] = Some(x & y);
+                    registers[z] = x & y;
                 }
                 Gate::Inv { x, z } => {
-                    let x = feeds[x.id].expect("Feed should be set");
+                    let x = registers[x];
 
-                    feeds[z.id] = Some(!x);
+                    registers[z] = !x;
                 }
             }
         }
@@ -166,17 +176,7 @@ impl Circuit {
         let outputs = self
             .outputs
             .iter()
-            .cloned()
-            .map(|output| {
-                let bits: Vec<bool> = output
-                    .iter()
-                    .map(|node| feeds[node.id].expect("Feed should be set"))
-                    .collect();
-
-                output
-                    .from_bin_repr(&bits)
-                    .expect("Output should be decodable")
-            })
+            .map(|output| output.get(&registers).expect("output is present"))
             .collect();
 
         Ok(outputs)

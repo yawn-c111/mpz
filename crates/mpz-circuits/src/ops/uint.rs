@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
 
 use crate::{
-    types::{BinaryRepr, U128, U16, U32, U64, U8},
+    repr::binary::{U128, U16, U32, U64, U8},
     Tracer,
 };
 
@@ -17,8 +17,8 @@ macro_rules! impl_wrapping_add_uint {
 
                 let nodes = binary::const_wrapping_add_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.to_inner().nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.to_inner().into_inner(),
                 );
 
                 let value = <$ty>::new(nodes);
@@ -39,8 +39,8 @@ macro_rules! impl_wrapping_add_uint {
 
                 let value = $ty::new(binary::const_wrapping_add_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.into_inner(),
                 ));
 
                 drop(state);
@@ -67,8 +67,8 @@ macro_rules! impl_wrapping_sub_uint {
 
                 let (nodes, _) = binary::const_wrapping_sub_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.to_inner().nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.to_inner().into_inner(),
                 );
 
                 let value = <$ty>::new(nodes);
@@ -89,8 +89,8 @@ macro_rules! impl_wrapping_sub_uint {
 
                 let (nodes, _) = binary::const_wrapping_sub_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.into_inner(),
                 );
 
                 let value = <$ty>::new(nodes);
@@ -109,52 +109,6 @@ impl_wrapping_sub_uint!(U32, u32, 32);
 impl_wrapping_sub_uint!(U64, u64, 64);
 impl_wrapping_sub_uint!(U128, u128, 128);
 
-impl<'a> BitXor for Tracer<'a, BinaryRepr> {
-    type Output = Tracer<'a, BinaryRepr>;
-
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        match (self.value, rhs.value) {
-            (BinaryRepr::Bit(a), BinaryRepr::Bit(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::U8(a), BinaryRepr::U8(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::U16(a), BinaryRepr::U16(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::U32(a), BinaryRepr::U32(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::U64(a), BinaryRepr::U64(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::U128(a), BinaryRepr::U128(b)) => {
-                let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                Tracer::new(self.state, c.into())
-            }
-            (BinaryRepr::Array(a), BinaryRepr::Array(b)) => Tracer::new(
-                self.state,
-                BinaryRepr::Array(
-                    a.into_iter()
-                        .zip(b)
-                        .map(|(a, b)| {
-                            let c = Tracer::new(self.state, a) ^ Tracer::new(self.state, b);
-                            c.value
-                        })
-                        .collect(),
-                ),
-            ),
-            (a, b) => panic!("types {:?} and {:?} are not compatible", a, b),
-        }
-    }
-}
-
 macro_rules! impl_bitxor_uint {
     ($ty:ident, $const_ty:ident, $len:expr) => {
         impl<'a> BitXor<Tracer<'a, $ty>> for Tracer<'a, $ty> {
@@ -165,8 +119,8 @@ macro_rules! impl_bitxor_uint {
 
                 let value = <$ty>::new(binary::xor_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.to_inner().nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.to_inner().into_inner(),
                 ));
 
                 drop(state);
@@ -185,8 +139,8 @@ macro_rules! impl_bitxor_uint {
 
                 let value = <$ty>::new(binary::xor_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.into_inner(),
                 ));
 
                 drop(state);
@@ -213,8 +167,8 @@ macro_rules! impl_bit_and_uint {
 
                 let value = <$ty>::new(binary::and_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.to_inner().nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.to_inner().into_inner(),
                 ));
 
                 drop(state);
@@ -233,8 +187,8 @@ macro_rules! impl_bit_and_uint {
 
                 let value = <$ty>::new(binary::and_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.into_inner(),
                 ));
 
                 drop(state);
@@ -261,8 +215,8 @@ macro_rules! impl_bit_or_uint {
 
                 let value = <$ty>::new(binary::or_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.to_inner().nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.to_inner().into_inner(),
                 ));
 
                 drop(state);
@@ -281,8 +235,8 @@ macro_rules! impl_bit_or_uint {
 
                 let value = <$ty>::new(binary::or_nbit::<$len>(
                     &mut state,
-                    self.to_inner().nodes(),
-                    rhs.nodes(),
+                    self.to_inner().into_inner(),
+                    rhs.into_inner(),
                 ));
 
                 drop(state);
@@ -311,7 +265,7 @@ macro_rules! impl_shl_uint {
 
                 let const_zero = state.get_const_zero();
 
-                let mut nodes = self.to_inner().nodes();
+                let mut nodes = self.to_inner().into_inner();
                 // Bits are LSB0, so we rotate right
                 nodes.rotate_right(rhs);
                 // Replace the lsbs with 0s
@@ -343,7 +297,7 @@ macro_rules! impl_shr_uint {
 
                 let const_zero = state.get_const_zero();
 
-                let mut nodes = self.to_inner().nodes();
+                let mut nodes = self.to_inner().into_inner();
                 // Bits are LSB0, so we rotate left
                 nodes.rotate_left(rhs);
                 // Replace the msbs with 0s
@@ -373,7 +327,7 @@ macro_rules! impl_neg_uint {
             fn not(self) -> Self::Output {
                 let mut state = self.state.borrow_mut();
 
-                let value = <$ty>::new(binary::inv_nbit(&mut state, self.to_inner().nodes()));
+                let value = <$ty>::new(binary::inv_nbit(&mut state, self.to_inner().into_inner()));
 
                 Tracer::new(self.state, value)
             }

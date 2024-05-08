@@ -6,7 +6,7 @@ use itybity::IntoBits;
 
 use crate::{
     ops::binary::{switch_nbit, wrapping_add_nbit, wrapping_sub_nbit},
-    types::U8,
+    repr::binary::U8,
     BuilderState, Node, Tracer,
 };
 
@@ -39,11 +39,11 @@ pub fn nbyte_add_mod_trace<'a, const N: usize>(
     // Otherwise, we would just use a const generic array here with length (N * 8) + 1
     let mut a_bits = a
         .into_iter()
-        .flat_map(|a| a.to_inner().nodes().into_iter())
+        .flat_map(|a| a.to_inner().into_inner().into_iter())
         .collect::<Vec<_>>();
     let mut b_bits = b
         .into_iter()
-        .flat_map(|b| b.to_inner().nodes().into_iter())
+        .flat_map(|b| b.to_inner().into_inner().into_iter())
         .collect::<Vec<_>>();
     let mut modulus_bits = modulus
         .into_iter()

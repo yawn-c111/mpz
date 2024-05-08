@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 
+use mpz_memory::repr::binary::Bit;
+
 use crate::{
     builder::BuilderState,
-    types::{BinaryRepr, Bit},
+    repr::binary::{PrimitiveRepr, ValueRepr},
     Feed, Node,
 };
 
@@ -28,36 +30,27 @@ impl<'a, T> Tracer<'a, T> {
     }
 }
 
-impl<'a, T> From<Tracer<'a, T>> for BinaryRepr
+impl<'a, T> From<Tracer<'a, T>> for PrimitiveRepr
 where
-    T: Into<BinaryRepr>,
+    T: Into<PrimitiveRepr>,
+{
+    fn from(value: Tracer<'a, T>) -> Self {
+        value.value.into()
+    }
+}
+
+impl<'a, T> From<Tracer<'a, T>> for ValueRepr
+where
+    T: Into<ValueRepr>,
 {
     fn from(tracer: Tracer<'a, T>) -> Self {
         tracer.value.into()
     }
 }
 
-impl<'a, const N: usize, T> From<[Tracer<'a, T>; N]> for BinaryRepr
-where
-    T: Into<BinaryRepr>,
-{
-    fn from(tracer: [Tracer<'a, T>; N]) -> Self {
-        BinaryRepr::Array(tracer.into_iter().map(|tracer| tracer.into()).collect())
-    }
-}
-
-impl<'a, T> From<Vec<Tracer<'a, T>>> for BinaryRepr
-where
-    T: Into<BinaryRepr>,
-{
-    fn from(tracer: Vec<Tracer<'a, T>>) -> Self {
-        BinaryRepr::Array(tracer.into_iter().map(|tracer| tracer.into()).collect())
-    }
-}
-
-impl<'a> Tracer<'a, Bit> {
+impl<'a> Tracer<'a, Bit<Node<Feed>>> {
     /// Returns the single node associated with the bit.
     pub fn node(&self) -> Node<Feed> {
-        self.to_inner().nodes()[0]
+        *self.to_inner().id()
     }
 }

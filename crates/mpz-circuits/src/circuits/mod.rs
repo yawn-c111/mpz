@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 use std::{cell::RefCell, sync::Arc};
 
 use crate::{
-    types::{BinaryRepr, U32, U8},
+    repr::binary::{ValueRepr, U32, U8},
     BuilderState, Circuit, CircuitBuilder, Tracer,
 };
 
@@ -57,11 +57,11 @@ pub fn aes128_trace<'a>(
         .append(&AES128, &[key.into(), msg.into()])
         .expect("aes 128 should append successfully");
 
-    let BinaryRepr::Array(ciphertext) = outputs.pop().unwrap() else {
+    let ValueRepr::Array(ciphertext) = outputs.pop().unwrap() else {
         panic!("aes 128 should have array output");
     };
 
-    let ciphertext: [_; 16] = ciphertext.try_into().unwrap();
+    let ciphertext: [U8; 16] = ciphertext.try_into().unwrap();
 
     ciphertext.map(|value| Tracer::new(state, value.try_into().unwrap()))
 }
@@ -91,11 +91,11 @@ pub fn sha256_compress_trace<'a>(
         .append(&SHA256_COMPRESS, &[state.into(), msg.into()])
         .expect("sha 256 should append successfully");
 
-    let BinaryRepr::Array(output) = outputs.pop().unwrap() else {
+    let ValueRepr::Array(output) = outputs.pop().unwrap() else {
         panic!("sha 256 should have array output");
     };
 
-    let output: [_; 8] = output.try_into().unwrap();
+    let output: [U32; 8] = output.try_into().unwrap();
 
     output.map(|value| Tracer::new(builder_state, value.try_into().unwrap()))
 }
@@ -186,11 +186,11 @@ pub fn sha256_trace<'a>(
         .append(&circ, &[state.into(), msg.to_vec().into()])
         .expect("circuit should append successfully");
 
-    let BinaryRepr::Array(hash) = outputs.pop().unwrap() else {
+    let ValueRepr::Array(hash) = outputs.pop().unwrap() else {
         panic!("circuit should have array output");
     };
 
-    let hash: [_; 32] = hash.try_into().expect("hash should be 32 bytes");
+    let hash: [U8; 32] = hash.try_into().expect("hash should be 32 bytes");
 
     hash.map(|value| Tracer::new(builder_state, value.try_into().unwrap()))
 }
