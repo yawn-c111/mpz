@@ -1,0 +1,13 @@
+[package]
+name = "mpz-binary-types"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+rand.workspace = true
+itybity.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
