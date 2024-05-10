@@ -71,7 +71,7 @@ impl Sender<state::Extension> {
     }
 
     /// Performs the Ferret extension.
-    /// Outputs exactly l = n-t COTs.
+    /// Outputs exactly l = n-k COTs.
     ///
     /// See step 5 and 6.
     ///
@@ -128,7 +128,7 @@ pub mod state {
         /// Sender's global secret.
         #[allow(dead_code)]
         pub(super) delta: Block,
-        /// Current Ferret counter.
+        /// Current Ferret extension counter.
         pub(super) counter: usize,
 
         /// Lpn type.

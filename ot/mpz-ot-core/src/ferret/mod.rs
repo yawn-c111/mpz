@@ -13,7 +13,7 @@ pub mod spcot;
 /// Computational security parameter
 pub const CSP: usize = 128;
 
-/// Number of hashes in Cuckoo hash.
+/// Number of hash functions in Cuckoo hash.
 pub const CUCKOO_HASH_NUM: usize = 3;
 
 /// Trial numbers in Cuckoo hash insertion.

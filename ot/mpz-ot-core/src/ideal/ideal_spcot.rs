@@ -48,9 +48,11 @@ impl IdealSpcot {
 
     /// Performs the batch extension of SPCOT.
     ///
-    /// # Argument
+    /// # Arguments
     ///
-    /// * `pos` - The positions in each extension.
+    /// * `pos` - For each extension contains a tuple:
+    ///           - the length of the choice-bit vector
+    ///           - the index of the point in the vector
     pub fn extend(&mut self, pos: &[(usize, u32)]) -> (SpcotMsgForSender, SpcotMsgForReceiver) {
         let mut v = vec![];
         let mut w = vec![];

@@ -50,7 +50,10 @@ impl Receiver {
 
 impl Receiver<state::PreExtension> {
     /// Performs the hash procedure in MPCOT extension.
-    /// Outputs the length of each bucket plus 1.
+    ///
+    /// For each bucket outputs a tuple:
+    /// - the base 2 logarithm (rounded up) of the length of the bucket
+    /// - the position of an index in the bucket
     ///
     /// See Step 1 to Step 4 in Figure 7.
     ///
@@ -71,7 +74,7 @@ impl Receiver<state::PreExtension> {
         }
         let cuckoo = CuckooHash::new(self.state.hashes.clone());
 
-        // Inserts all the alpha's.
+        // Inserts all the alphas.
         let table = cuckoo.insert(alphas)?;
 
         let m = table.len();
@@ -201,7 +204,7 @@ pub mod state {
     ///
     /// In this state the receiver performs pre extension in MPCOT (potentially multiple times).
     pub struct PreExtension {
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
         /// The hashes to generate Cuckoo hash table.
         pub(super) hashes: Arc<[AesEncryptor; CUCKOO_HASH_NUM]>,
@@ -214,7 +217,7 @@ pub mod state {
     ///
     /// In this state the receiver performs MPCOT extension (potentially multiple times).
     pub struct Extension {
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
         /// Current length of Cuckoo hash table, will possibly be changed in each extension.
         pub(super) m: usize,

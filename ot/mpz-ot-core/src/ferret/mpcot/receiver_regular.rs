@@ -1,4 +1,5 @@
 //! MPCOT receiver for regular indices. Regular indices means the indices are evenly distributed.
+//! See "Optimization for regular indices" in §5.
 
 use mpz_core::Block;
 
@@ -26,8 +27,11 @@ impl Receiver {
     }
 }
 impl Receiver<state::PreExtension> {
-    /// Performs the prepare procedure in MPCOT extension.
-    /// Outputs the indices for SPCOT.
+    /// Performs the preparation procedure in MPCOT extension.
+    ///
+    /// For each call to be made to SPCOT outputs a tuple:
+    /// - the base 2 logarithm (rounded up) of the length of the choice-bit vector
+    /// - the index of the point in the vector
     ///
     /// # Arguments.
     ///
@@ -46,7 +50,7 @@ impl Receiver<state::PreExtension> {
             ));
         }
 
-        // The range of each interval.
+        // The size of each interval.
         let k = (n + t - 1) / t;
 
         let queries_length = if n % t == 0 {
@@ -163,7 +167,7 @@ pub mod state {
     ///
     /// In this state the receiver performs pre extension in MPCOT (potentially multiple times).
     pub struct PreExtension {
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
     }
 
@@ -175,7 +179,7 @@ pub mod state {
     ///
     /// In this state the receiver performs MPCOT extension (potentially multiple times).
     pub struct Extension {
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         #[allow(dead_code)]
         pub(super) counter: usize,
         /// The total number of indices in the current extension.

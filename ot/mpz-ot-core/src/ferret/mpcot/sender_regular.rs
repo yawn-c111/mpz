@@ -1,4 +1,5 @@
 //! MPCOT sender for regular indices. Regular indices means the indices are evenly distributed.
+//! See "Optimization for regular indices" in §5.
 
 use mpz_core::Block;
 
@@ -31,7 +32,7 @@ impl Sender {
 }
 
 impl Sender<state::PreExtension> {
-    /// Performs the prepare procedure in MPCOT extension.
+    /// Performs the preparation procedure in MPCOT extension.
     /// Outputs the information for SPCOT.
     ///
     /// # Arguments.
@@ -49,7 +50,7 @@ impl Sender<state::PreExtension> {
             ));
         }
 
-        // The range of each interval.
+        // The size of each interval.
         let k = (n + t - 1) / t;
 
         let queries_length = if n % t == 0 {
@@ -69,7 +70,7 @@ impl Sender<state::PreExtension> {
         let mut queries_depth = Vec::with_capacity(queries_length.len());
 
         for len in queries_length.iter() {
-            // pad `len`` to power of 2.
+            // pad `len` to power of 2.
             let power = len
                 .checked_next_power_of_two()
                 .expect("len should be less than usize::MAX / 2 - 1")
@@ -156,7 +157,7 @@ pub mod state {
     pub struct PreExtension {
         /// Sender's global secret.
         pub(super) delta: Block,
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
     }
 
@@ -169,7 +170,7 @@ pub mod state {
     pub struct Extension {
         /// Sender's global secret.
         pub(super) delta: Block,
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
         /// The total number of indices in the current extension.
         pub(super) n: u32,

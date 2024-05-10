@@ -142,7 +142,7 @@ pub(crate) fn hash_to_index(hash: &AesEncryptor, range: usize, value: u32) -> us
     (res as usize) % range
 }
 
-// Finds the position of the item in each Bucket.
+// Finds the position of the `item` in the given `bucket`.
 #[inline(always)]
 pub(crate) fn find_pos(bucket: &[Item], item: &Item) -> Result<usize, BucketError> {
     let pos = bucket.iter().position(|&x| *item == x);

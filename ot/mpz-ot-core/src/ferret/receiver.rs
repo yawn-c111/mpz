@@ -67,12 +67,8 @@ impl Receiver {
 }
 
 impl Receiver<state::Extension> {
-    /// The prepare precedure of extension, sample error vectors and outputs information for MPCOT.
+    /// The preparation procedure of extension. Samples error vectors and outputs information for MPCOT.
     /// See step 3 and 4.
-    ///
-    /// # Arguments.
-    ///
-    /// * `lpn_type` - The type of LPN parameters.
     pub fn get_mpcot_query(&mut self) -> (Vec<u32>, usize, usize) {
         match self.state.lpn_type {
             LpnType::Uniform => {
@@ -97,7 +93,7 @@ impl Receiver<state::Extension> {
     }
 
     /// Performs the Ferret extension.
-    /// Outputs exactly l = n - t COTs.
+    /// Outputs exactly l = n - k COTs.
     ///
     /// See step 5 and 6.
     ///
@@ -162,9 +158,9 @@ pub mod state {
 
     /// The receiver's state after the setup phase.
     ///
-    /// In this state the sender performs Ferret extension (potentially multiple times).
+    /// In this state the receiver performs Ferret extension (potentially multiple times).
     pub struct Extension {
-        /// Current Ferret counter.
+        /// Current Ferret extension counter.
         pub(super) counter: usize,
 
         /// Lpn parameters.

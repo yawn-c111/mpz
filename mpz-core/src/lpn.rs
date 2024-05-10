@@ -112,10 +112,10 @@ impl<const D: usize> LpnEncoder<D> {
     }
 }
 
-/// Lpn paramters
+/// LPN parameters.
 #[derive(Copy, Clone, Debug)]
 pub struct LpnParameters {
-    /// The length of output vecotrs.
+    /// The length of output vectors.
     pub n: usize,
     /// The length of the secret vector
     pub k: usize,
@@ -156,9 +156,7 @@ impl LpnParameters {
 
 #[cfg(test)]
 mod tests {
-    use crate::lpn::LpnEncoder;
-    use crate::prp::Prp;
-    use crate::Block;
+    use crate::{lpn::LpnEncoder, prp::Prp, Block};
 
     impl<const D: usize> LpnEncoder<D> {
         #[allow(dead_code)]
@@ -202,9 +200,7 @@ mod tests {
 
     #[test]
     fn lpn_test() {
-        use crate::lpn::LpnEncoder;
-        use crate::prg::Prg;
-        use crate::Block;
+        use crate::{lpn::LpnEncoder, prg::Prg, Block};
 
         let k = 20;
         let n = 200;

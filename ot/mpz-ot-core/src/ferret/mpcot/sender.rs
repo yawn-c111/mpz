@@ -187,7 +187,7 @@ pub mod state {
     pub struct PreExtension {
         /// Sender's global secret.
         pub(super) delta: Block,
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
         /// The hashes to generate Cuckoo hash table.
         pub(super) hashes: Arc<[AesEncryptor; CUCKOO_HASH_NUM]>,
@@ -202,18 +202,18 @@ pub mod state {
     pub struct Extension {
         /// Sender's global secret.
         pub(super) delta: Block,
-        /// Current MPCOT counter
+        /// Current MPCOT extension counter.
         pub(super) counter: usize,
 
         /// Current length of Cuckoo hash table, will possibly be changed in each extension.
         pub(super) m: usize,
         /// The total number of indices in the current extension.
         pub(super) n: u32,
-        /// The hashes to generate Cuckoo hash table.
+        /// The hash functions to generate Cuckoo hash table.
         pub(super) hashes: Arc<[AesEncryptor; CUCKOO_HASH_NUM]>,
-        /// The buckets contains all the hash values.
+        /// The buckets containing all the hash values.
         pub(super) buckets: Vec<Vec<Item>>,
-        /// The padded buckets length (power of 2).
+        /// The padded length of each bucket (power of 2).
         pub(super) buckets_length: Vec<usize>,
     }
 
