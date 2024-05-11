@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 
-use mpz_memory::repr::binary::Bit;
+use mpz_dynamic_types::primitive::{PrimitiveType, StaticPrimitiveType};
 
 use crate::{
     builder::BuilderState,
-    repr::binary::{PrimitiveRepr, ValueRepr},
+    repr::binary::{Bit, PrimitiveRepr, ValueRepr},
     Feed, Node,
 };
 
@@ -30,6 +30,24 @@ impl<'a, T> Tracer<'a, T> {
     }
 }
 
+impl<'a, T> PrimitiveType for Tracer<'a, T>
+where
+    T: PrimitiveType,
+{
+    type Type = T::Type;
+
+    fn primitive_type(&self) -> Self::Type {
+        self.value.primitive_type()
+    }
+}
+
+impl<'a, T> StaticPrimitiveType for Tracer<'a, T>
+where
+    T: StaticPrimitiveType,
+{
+    const TYPE: Self::Type = T::TYPE;
+}
+
 impl<'a, T> From<Tracer<'a, T>> for PrimitiveRepr
 where
     T: Into<PrimitiveRepr>,
@@ -48,7 +66,7 @@ where
     }
 }
 
-impl<'a> Tracer<'a, Bit<Node<Feed>>> {
+impl<'a> Tracer<'a, Bit> {
     /// Returns the single node associated with the bit.
     pub fn node(&self) -> Node<Feed> {
         *self.to_inner().id()

@@ -2,9 +2,8 @@
 members = [
     "mpz-core",
     "mpz-common",
-    "mpz-binary-types",
+    "mpz-dynamic-types",
     "mpz-fields",
-    "mpz-memory",
     "mpz-circuits",
     "mpz-circuits-macros",
     "mpz-cointoss",
@@ -29,9 +28,8 @@ resolver = "2"
 [workspace.dependencies]
 mpz-core = { path = "mpz-core" }
 mpz-common = { path = "mpz-common" }
-mpz-binary-types = { path = "mpz-binary-types" }
+mpz-dynamic-types = { path = "mpz-dynamic-types" }
 mpz-fields = { path = "mpz-fields" }
-mpz-memory = { path = "mpz-memory" }
 mpz-circuits = { path = "mpz-circuits" }
 mpz-circuits-macros = { path = "mpz-circuits-macros" }
 mpz-cointoss = { path = "mpz-cointoss" }
@@ -118,4 +116,3 @@ once_cell = "1"
 generic-array = "0.14"
 itybity = "0.2"
 enum-try-as-inner = "0.1.0"
-id-arena = "2.2"

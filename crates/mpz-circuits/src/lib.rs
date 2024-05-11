@@ -25,7 +25,19 @@ pub use tracer::Tracer;
 
 pub use once_cell;
 
-pub use mpz_binary_types::{Array, Primitive, PrimitiveType, Value, ValueType};
+#[doc(hidden)]
+pub use mpz_dynamic_types;
+
+/// A primitive type.
+pub type PrimitiveType = mpz_dynamic_types::primitive::binary::BinaryType;
+/// A value type.
+pub type ValueType = mpz_dynamic_types::composite::CompositeType<PrimitiveType>;
+/// A primitive.
+pub type Primitive = mpz_dynamic_types::primitive::binary::Value;
+/// An array.
+pub type Array = mpz_dynamic_types::composite::Array<Primitive>;
+/// A value.
+pub type Value = mpz_dynamic_types::composite::Composite<Primitive>;
 
 /// Evaluates a circuit and attempts to coerce the output into the specified return type
 /// indicated in the function signature.

@@ -53,31 +53,40 @@ pub(crate) fn evaluate_impl(item: TokenStream) -> TokenStream {
             parse_quote!(
                 (
                     #(
-                        <#elems>::try_from(outputs.pop().unwrap()).map_err(|e| {
-                            CircuitError::InvalidOutputType {
-                                id: #ids,
-                                expected: e.expected(),
-                                actual: e.actual(),
+                        {
+                            let output = outputs.pop().unwrap();
+                            if output.composite_type() != <#elems>::TYPE {
+                                return Err(CircuitError::InvalidOutputType {
+                                    id: #ids,
+                                    expected: output.composite_type(),
+                                    actual: <#elems>::TYPE,
+                                });
                             }
-                        })?
+                            <#elems>::try_from(output).expect("value type matches")
+                        }
                     ),*
                 )
             )
         }
         ty => {
-            parse_quote!(<#ty>::try_from(outputs.pop().unwrap()).map_err(|e| {
-                CircuitError::InvalidOutputType {
-                    id: 0,
-                    expected: e.expected(),
-                    actual: e.actual(),
+            parse_quote!(
+            {
+                let output = outputs.pop().unwrap();
+                if output.composite_type() != <#ty>::TYPE {
+                    return Err(CircuitError::InvalidOutputType {
+                        id: 0,
+                        expected: output.composite_type(),
+                        actual: <#ty>::TYPE,
+                    });
                 }
-            })?)
+                <#ty>::try_from(output).expect("value type matches")
+            })
         }
     };
 
     quote! {
         {
-            use mpz_circuits::CircuitError;
+            use mpz_circuits::{CircuitError, mpz_dynamic_types::composite::StaticCompositeType};
 
             let eval = || -> Result<#return_type, CircuitError> {
                 if #circ.outputs().len() != #return_count {

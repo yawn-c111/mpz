@@ -1,9 +1,9 @@
 use crate::{
     components::{binary::GateType, Feed, Node},
-    repr::binary::ValueRepr,
-    Circuit, CircuitBuilder,
+    repr::binary::{ArrayRepr, PrimitiveRepr, ValueRepr},
+    Circuit, CircuitBuilder, ValueType,
 };
-use mpz_binary_types::{BitLength, ValueType};
+use mpz_dynamic_types::primitive::binary::BitLength;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
 
@@ -52,7 +52,11 @@ impl Circuit {
         let mut input_len = 0;
         for input in inputs {
             let input = builder.add_input_by_type(input.clone());
-            for (node, old_id) in input.iter().zip(input_len..input_len + input.bit_length()) {
+            for (node, old_id) in input
+                .iter()
+                .flat_map(|input| input.iter())
+                .zip(input_len..input_len + input.bit_length())
+            {
                 feed_map.insert(old_id, *node);
             }
             input_len += input.bit_length();
@@ -103,16 +107,44 @@ impl Circuit {
         feed_ids.sort();
 
         for output in outputs.iter().rev() {
-            let feeds = feed_ids
+            let mut feeds = feed_ids
                 .drain(feed_ids.len() - output.bit_length()..)
                 .map(|id| {
                     *feed_map
                         .get(&id)
                         .expect("Old feed should be mapped to new feed")
-                })
-                .collect::<Vec<Node<Feed>>>();
+                });
 
-            let output = ValueRepr::try_from_ids(*output, feeds).unwrap();
+            let output = match output {
+                ValueType::Primitive(ty) => ValueRepr::Primitive(
+                    PrimitiveRepr::try_from_ids(*ty, feeds.collect::<Vec<Node<Feed>>>())
+                        .expect("bit length is correct"),
+                ),
+                ValueType::Array { ty, len } => {
+                    if let Some(ty) = ty {
+                        ValueRepr::Array(
+                            ArrayRepr::new(
+                                (0..*len)
+                                    .map(|_| {
+                                        PrimitiveRepr::try_from_ids(
+                                            *ty,
+                                            feeds
+                                                .by_ref()
+                                                .take(ty.bit_length())
+                                                .collect::<Vec<Node<Feed>>>(),
+                                        )
+                                        .expect("bit length is correct")
+                                    })
+                                    .collect(),
+                            )
+                            .expect("element types are consistent"),
+                        )
+                    } else {
+                        ValueRepr::Array(ArrayRepr::default())
+                    }
+                }
+            };
+
             builder.add_output(output);
         }
 
@@ -156,6 +188,7 @@ impl UncheckedGate {
 #[cfg(test)]
 mod tests {
     use mpz_circuits_macros::evaluate;
+    use mpz_dynamic_types::composite::StaticCompositeType;
 
     use super::*;
 
@@ -186,20 +219,8 @@ mod tests {
 
         let circ = Circuit::parse(
             "circuits/bristol/aes_128_reverse.txt",
-            &[
-                ValueType::Array {
-                    ty: PrimitiveType::U8,
-                    len: 16,
-                },
-                ValueType::Array {
-                    ty: PrimitiveType::U8,
-                    len: 16,
-                },
-            ],
-            &[ValueType::Array {
-                ty: PrimitiveType::U8,
-                len: 16,
-            }],
+            &[<[u8; 16]>::TYPE, <[u8; 16]>::TYPE],
+            &[<[u8; 16]>::TYPE],
         )
         .unwrap()
         .reverse_input(0)
@@ -227,20 +248,8 @@ mod tests {
 
         let circ = Circuit::parse(
             "circuits/bristol/sha256_reverse.txt",
-            &[
-                ValueType::Array {
-                    ty: PrimitiveType::U8,
-                    len: 64,
-                },
-                ValueType::Array {
-                    ty: PrimitiveType::U32,
-                    len: 8,
-                },
-            ],
-            &[ValueType::Array {
-                ty: PrimitiveType::U32,
-                len: 8,
-            }],
+            &[<[u8; 64]>::TYPE, <[u32; 8]>::TYPE],
+            &[<[u32; 8]>::TYPE],
         )
         .unwrap()
         .reverse_inputs()

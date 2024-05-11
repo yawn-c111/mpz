@@ -1,14 +1,17 @@
 use std::{cell::RefCell, collections::HashMap, mem::discriminant};
 
 use itybity::{BitIterable, IntoBits};
-use mpz_binary_types::{BitLength, ValueType};
-use mpz_memory::repr::binary::{StaticPrimitive, StaticPrimitiveRepr};
+
+use mpz_dynamic_types::{
+    primitive::binary::{BitLength, StaticBitLength},
+    repr::{binary::BinaryRepr, PrimitiveRepr, StaticPrimitiveRepr},
+};
 
 use crate::{
     components::{binary::Gate, Feed, Node},
-    repr::binary::ValueRepr,
+    repr::binary::{ArrayRepr, ValueRepr},
     tracer::Tracer,
-    Circuit,
+    Circuit, ValueType,
 };
 
 /// An error that can occur when building a circuit.
@@ -71,11 +74,17 @@ impl CircuitBuilder {
     /// # Returns
     ///
     /// The binary encoded form of the input.
-    pub fn add_input<T: StaticPrimitive>(&self) -> Tracer<'_, T::Repr<Node<Feed>>> {
+    pub fn add_input<T: StaticPrimitiveRepr + StaticBitLength>(
+        &self,
+    ) -> Tracer<'_, T::Repr<Node<Feed>>>
+    where
+        T::Repr<Node<Feed>>: Clone + Into<BinaryRepr<Node<Feed>>>,
+    {
         let mut state = self.state.borrow_mut();
 
         let value = state.add_value::<T>();
-        state.inputs.push(value.clone().into());
+        let repr: BinaryRepr<_> = value.clone().into();
+        state.inputs.push(ValueRepr::Primitive(repr));
 
         Tracer::new(&self.state, value)
     }
@@ -103,10 +112,11 @@ impl CircuitBuilder {
     /// # Returns
     ///
     /// The binary encoded form of the array.
-    pub fn add_array_input<T: StaticPrimitive, const N: usize>(
+    pub fn add_array_input<T: StaticPrimitiveRepr + StaticBitLength, const N: usize>(
         &self,
     ) -> [Tracer<'_, T::Repr<Node<Feed>>>; N]
     where
+        T::Repr<Node<Feed>>: Clone,
         [T::Repr<Node<Feed>>; N]: Into<ValueRepr>,
     {
         let mut state = self.state.borrow_mut();
@@ -126,11 +136,12 @@ impl CircuitBuilder {
     /// # Returns
     ///
     /// The binary encoded form of the vector.
-    pub fn add_vec_input<T: StaticPrimitive>(
+    pub fn add_vec_input<T: StaticPrimitiveRepr + StaticBitLength>(
         &self,
         len: usize,
     ) -> Vec<Tracer<'_, T::Repr<Node<Feed>>>>
     where
+        T::Repr<Node<Feed>>: Clone,
         Vec<T::Repr<Node<Feed>>>: Into<ValueRepr>,
     {
         let mut state = self.state.borrow_mut();
@@ -152,7 +163,7 @@ impl CircuitBuilder {
     }
 
     /// Returns a tracer for a constant value
-    pub fn get_constant<T: StaticPrimitive + BitIterable>(
+    pub fn get_constant<T: StaticPrimitiveRepr + BitIterable>(
         &self,
         value: T,
     ) -> Tracer<'_, T::Repr<Node<Feed>>> {
@@ -228,7 +239,7 @@ impl BuilderState {
     /// # Arguments
     ///
     /// * `value` - The value to encode.
-    pub fn get_constant<T: StaticPrimitive + BitIterable>(
+    pub fn get_constant<T: StaticPrimitiveRepr + BitIterable>(
         &mut self,
         value: T,
     ) -> T::Repr<Node<Feed>> {
@@ -240,7 +251,7 @@ impl BuilderState {
             .map(|bit| if bit { one } else { zero })
             .collect();
 
-        T::Repr::try_from_ids(nodes).expect("Value should have correct bit length")
+        T::Repr::try_from_ids(T::TYPE, nodes).expect("Value should have correct bit length")
     }
 
     /// Adds a feed to the circuit.
@@ -252,19 +263,48 @@ impl BuilderState {
     }
 
     /// Adds a value to the circuit.
-    pub(crate) fn add_value<T: StaticPrimitive>(&mut self) -> T::Repr<Node<Feed>> {
-        T::Repr::try_from_ids((0..T::BIT_LENGTH).map(|_| self.add_feed()).collect())
-            .expect("Value should have correct bit length")
+    pub(crate) fn add_value<T: StaticPrimitiveRepr + StaticBitLength>(
+        &mut self,
+    ) -> T::Repr<Node<Feed>> {
+        T::Repr::try_from_ids(
+            T::TYPE,
+            (0..T::BIT_LENGTH).map(|_| self.add_feed()).collect(),
+        )
+        .expect("Value should have correct bit length")
     }
 
     /// Adds a value to the circuit by type.
     ///
     /// # Arguments
     ///
-    /// * `typ` - The type of the value to add.
-    pub(crate) fn add_value_by_type(&mut self, typ: ValueType) -> ValueRepr {
-        let nodes: Vec<_> = (0..typ.bit_length()).map(|_| self.add_feed()).collect();
-        ValueRepr::try_from_ids(typ, nodes).expect("Value should have correct bit length")
+    /// * `ty` - The type of the value to add.
+    pub(crate) fn add_value_by_type(&mut self, ty: ValueType) -> ValueRepr {
+        match ty {
+            ValueType::Primitive(ty) => ValueRepr::Primitive(
+                BinaryRepr::try_from_ids(ty, (0..ty.bit_length()).map(|_| self.add_feed()))
+                    .expect("bit length is correct"),
+            ),
+            ValueType::Array { ty, len } => {
+                if let Some(ty) = ty {
+                    ValueRepr::Array(
+                        ArrayRepr::new(
+                            (0..len)
+                                .map(|_| {
+                                    BinaryRepr::try_from_ids(
+                                        ty,
+                                        (0..ty.bit_length()).map(|_| self.add_feed()),
+                                    )
+                                    .expect("bit length is correct")
+                                })
+                                .collect(),
+                        )
+                        .expect("element types are consistent"),
+                    )
+                } else {
+                    ValueRepr::Array(ArrayRepr::default())
+                }
+            }
+        }
     }
 
     /// Adds an XOR gate to the circuit.
@@ -399,7 +439,11 @@ impl BuilderState {
                     append_input, builder_input,
                 )));
             }
-            for (builder_node, append_node) in builder_input.iter().zip(append_input.iter()) {
+            for (builder_node, append_node) in builder_input
+                .iter()
+                .flat_map(|input| input.iter())
+                .zip(append_input.iter().flat_map(|input| input.iter()))
+            {
                 feed_map.insert(*append_node, *builder_node);
             }
         }
@@ -430,7 +474,7 @@ impl BuilderState {
         // Update the outputs
         let mut outputs = circ.outputs().to_vec();
         outputs.iter_mut().for_each(|output| {
-            for node in output.iter_mut() {
+            for node in output.iter_mut().flat_map(|p| p.iter_mut()) {
                 *node = *feed_map.get(node).expect("feed should exist");
             }
         });
@@ -444,11 +488,15 @@ impl BuilderState {
         // the reserved constant nodes (which should be factored out during building)
         self.inputs
             .iter_mut()
-            .for_each(|input| input.iter_mut().for_each(|node| node.shift_left(2)));
+            .flat_map(|input| input.iter_mut())
+            .flat_map(|input| input.iter_mut())
+            .for_each(|node| node.shift_left(2));
         self.gates.iter_mut().for_each(|gate| gate.shift_left(2));
         self.outputs
             .iter_mut()
-            .for_each(|output| output.iter_mut().for_each(|node| node.shift_left(2)));
+            .flat_map(|input| input.iter_mut())
+            .flat_map(|input| input.iter_mut())
+            .for_each(|node| node.shift_left(2));
 
         Ok(Circuit {
             inputs: self.inputs,

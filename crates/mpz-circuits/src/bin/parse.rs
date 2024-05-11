@@ -1,4 +1,4 @@
-use mpz_circuits::{Circuit, PrimitiveType, ValueType};
+use mpz_circuits::{mpz_dynamic_types::composite::StaticCompositeType, Circuit};
 use std::fs::write;
 
 fn main() {
@@ -9,20 +9,8 @@ fn main() {
 fn build_aes() {
     let circ = Circuit::parse(
         "circuits/bristol/aes_128_reverse.txt",
-        &[
-            ValueType::Array {
-                ty: PrimitiveType::U8,
-                len: 16,
-            },
-            ValueType::Array {
-                ty: PrimitiveType::U8,
-                len: 16,
-            },
-        ],
-        &[ValueType::Array {
-            ty: PrimitiveType::U8,
-            len: 16,
-        }],
+        &[<[u8; 16]>::TYPE, <[u8; 16]>::TYPE],
+        &[<[u8; 16]>::TYPE],
     )
     .unwrap()
     .reverse_input(0)
@@ -36,20 +24,8 @@ fn build_aes() {
 fn build_sha() {
     let circ = Circuit::parse(
         "circuits/bristol/sha256_reverse.txt",
-        &[
-            ValueType::Array {
-                ty: PrimitiveType::U8,
-                len: 64,
-            },
-            ValueType::Array {
-                ty: PrimitiveType::U32,
-                len: 8,
-            },
-        ],
-        &[ValueType::Array {
-            ty: PrimitiveType::U32,
-            len: 8,
-        }],
+        &[<[u8; 64]>::TYPE, <[u32; 8]>::TYPE],
+        &[<[u32; 8]>::TYPE],
     )
     .unwrap()
     .reverse_inputs()

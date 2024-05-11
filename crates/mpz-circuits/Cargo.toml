@@ -12,14 +12,18 @@ name = "mpz_circuits"
 [features]
 default = ["parse", "serde", "aes", "sha2"]
 parse = ["dep:regex"]
-serde = ["dep:serde", "dep:serde_arrays", "dep:bincode", "mpz-memory/serde"]
+serde = [
+    "dep:serde",
+    "dep:serde_arrays",
+    "dep:bincode",
+    "mpz-dynamic-types/serde",
+]
 aes = []
 sha2 = ["dep:sha2"]
 
 [dependencies]
 mpz-circuits-macros = { path = "../mpz-circuits-macros" }
-mpz-binary-types.workspace = true
-mpz-memory = { workspace = true, features = ["binary"] }
+mpz-dynamic-types = { workspace = true }
 
 sha2 = { workspace = true, features = ["compress"], optional = true }
 

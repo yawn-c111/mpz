@@ -1,9 +1,9 @@
-use mpz_binary_types::{Value, ValueType};
-use mpz_memory::repr::Repr;
+use mpz_dynamic_types::repr::Repr;
 
 use crate::{
     components::{binary::Gate, Registers},
     repr::binary::ValueRepr,
+    Value, ValueType,
 };
 
 /// An error that can occur when performing operations with a circuit.
@@ -140,11 +140,11 @@ impl Circuit {
         let mut registers = Registers::new(self.feed_count);
 
         for (id, (input, value)) in self.inputs.iter().zip(values).enumerate() {
-            if input.value_type() != value.value_type() {
+            if input.composite_type() != value.composite_type() {
                 return Err(CircuitError::InvalidInputType {
                     id,
-                    expected: input.value_type(),
-                    actual: value.value_type(),
+                    expected: input.composite_type(),
+                    actual: value.composite_type(),
                 });
             }
 

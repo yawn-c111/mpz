@@ -61,7 +61,7 @@ pub fn aes128_trace<'a>(
         panic!("aes 128 should have array output");
     };
 
-    let ciphertext: [U8; 16] = ciphertext.try_into().unwrap();
+    let ciphertext: [_; 16] = ciphertext.try_into().unwrap();
 
     ciphertext.map(|value| Tracer::new(state, value.try_into().unwrap()))
 }
@@ -95,7 +95,7 @@ pub fn sha256_compress_trace<'a>(
         panic!("sha 256 should have array output");
     };
 
-    let output: [U32; 8] = output.try_into().unwrap();
+    let output: [_; 8] = output.try_into().unwrap();
 
     output.map(|value| Tracer::new(builder_state, value.try_into().unwrap()))
 }
@@ -190,7 +190,7 @@ pub fn sha256_trace<'a>(
         panic!("circuit should have array output");
     };
 
-    let hash: [U8; 32] = hash.try_into().expect("hash should be 32 bytes");
+    let hash: [_; 32] = hash.try_into().expect("hash should be 32 bytes");
 
     hash.map(|value| Tracer::new(builder_state, value.try_into().unwrap()))
 }

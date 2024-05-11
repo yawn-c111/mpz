@@ -6,7 +6,7 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use mpz_memory::{Memory, MemoryMut};
+use mpz_dynamic_types::{Memory, MemoryGet, MemoryMut};
 
 /// A feed in a circuit.
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -93,21 +93,18 @@ impl<T: Default> Registers<T> {
     }
 }
 
-impl<T> Memory<T> for Registers<T> {
+impl<T> Memory for Registers<T> {
     type Id = Node<Feed>;
+    type Type = T;
+}
 
+impl<T> MemoryGet for Registers<T> {
     fn get(&self, id: &Self::Id) -> Option<&T> {
         self.0.get(&id.id)
     }
-
-    fn alloc(&mut self, value: T) -> Self::Id {
-        let id = self.0.len();
-        self.0.push(value);
-        Node::new(id)
-    }
 }
 
-impl<T> MemoryMut<T> for Registers<T> {
+impl<T> MemoryMut for Registers<T> {
     fn set(&mut self, id: &Self::Id, value: T) {
         self.0[id.id] = value;
     }

@@ -1,20 +1,18 @@
 [package]
-name = "mpz-memory"
+name = "mpz-dynamic-types"
 version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["binary"]
-binary = ["dep:mpz-binary-types", "dep:itybity"]
+default = ["serde"]
 serde = ["dep:serde", "dep:serde_arrays"]
 
 [dependencies]
-mpz-binary-types = { workspace = true, optional = true }
-
-itybity = { workspace = true, optional = true }
-thiserror.workspace = true
+thiserror = { workspace = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 serde_arrays = { workspace = true, optional = true }
+itybity = { workspace = true }
+rand = { workspace = true }
 
 [lints]
 workspace = true
