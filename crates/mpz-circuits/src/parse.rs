@@ -120,14 +120,14 @@ impl Circuit {
                     PrimitiveRepr::try_from_ids(*ty, feeds.collect::<Vec<Node<Feed>>>())
                         .expect("bit length is correct"),
                 ),
-                ValueType::Array { ty, len } => {
-                    if let Some(ty) = ty {
+                ValueType::Array(arr_ty) => {
+                    if let Some(ty) = arr_ty.primitive_type() {
                         ValueRepr::Array(
                             ArrayRepr::new(
-                                (0..*len)
+                                (0..arr_ty.len())
                                     .map(|_| {
                                         PrimitiveRepr::try_from_ids(
-                                            *ty,
+                                            ty,
                                             feeds
                                                 .by_ref()
                                                 .take(ty.bit_length())

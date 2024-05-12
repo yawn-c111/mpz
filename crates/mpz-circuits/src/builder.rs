@@ -284,11 +284,11 @@ impl BuilderState {
                 BinaryRepr::try_from_ids(ty, (0..ty.bit_length()).map(|_| self.add_feed()))
                     .expect("bit length is correct"),
             ),
-            ValueType::Array { ty, len } => {
-                if let Some(ty) = ty {
+            ValueType::Array(arr_ty) => {
+                if let Some(ty) = arr_ty.primitive_type() {
                     ValueRepr::Array(
                         ArrayRepr::new(
-                            (0..len)
+                            (0..arr_ty.len())
                                 .map(|_| {
                                     BinaryRepr::try_from_ids(
                                         ty,
