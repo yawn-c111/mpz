@@ -22,8 +22,11 @@ pub trait Binary:
     + From<Self::U128>
     + Sized
 {
+    /// Backing type.
+    type BackingType: Clone;
+
     /// Bit type.
-    type Bit: Default + Clone;
+    type Bit;
     /// U8 type.
     type U8;
     /// U16 type.
@@ -36,40 +39,40 @@ pub trait Binary:
     type U128;
 
     /// Converts from a bit to self.
-    fn from_bit(bit: Self::Bit) -> Self;
+    fn from_bit(bit: Self::BackingType) -> Self;
 
     /// Converts from bits in LSB0 order to u8.
-    fn from_u8(bits: [Self::Bit; 8]) -> Self;
+    fn from_u8(bits: [Self::BackingType; 8]) -> Self;
 
     /// Converts from bits in LSB0 order to u16.
-    fn from_u16(bits: [Self::Bit; 16]) -> Self;
+    fn from_u16(bits: [Self::BackingType; 16]) -> Self;
 
     /// Converts from bits in LSB0 order to u32.
-    fn from_u32(bits: [Self::Bit; 32]) -> Self;
+    fn from_u32(bits: [Self::BackingType; 32]) -> Self;
 
     /// Converts from bits in LSB0 order to u64.
-    fn from_u64(bits: [Self::Bit; 64]) -> Self;
+    fn from_u64(bits: [Self::BackingType; 64]) -> Self;
 
     /// Converts from bits in LSB0 order to u128.
-    fn from_u128(bits: [Self::Bit; 128]) -> Self;
+    fn from_u128(bits: [Self::BackingType; 128]) -> Self;
 
     /// Converts self to a bit.
-    fn into_bit(self) -> Self::Bit;
+    fn into_bit(self) -> Self::BackingType;
 
     /// Converts a u8 to bits in LSB0 order.
-    fn into_u8(self) -> [Self::Bit; 8];
+    fn into_u8(self) -> [Self::BackingType; 8];
 
     /// Converts a u16 to bits in LSB0 order.
-    fn into_u16(self) -> [Self::Bit; 16];
+    fn into_u16(self) -> [Self::BackingType; 16];
 
     /// Converts a u32 to bits in LSB0 order.
-    fn into_u32(self) -> [Self::Bit; 32];
+    fn into_u32(self) -> [Self::BackingType; 32];
 
     /// Converts a u64 to bits in LSB0 order.
-    fn into_u64(self) -> [Self::Bit; 64];
+    fn into_u64(self) -> [Self::BackingType; 64];
 
     /// Converts a u128 to bits in LSB0 order.
-    fn into_u128(self) -> [Self::Bit; 128];
+    fn into_u128(self) -> [Self::BackingType; 128];
 }
 
 /// A type with a bit length.
@@ -216,6 +219,7 @@ impl PrimitiveType for Value {
 }
 
 impl Binary for Value {
+    type BackingType = bool;
     type Bit = bool;
     type U8 = u8;
     type U16 = u16;

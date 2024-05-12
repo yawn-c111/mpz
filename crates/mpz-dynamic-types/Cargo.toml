@@ -13,6 +13,7 @@ serde = { workspace = true, optional = true, features = ["derive"] }
 serde_arrays = { workspace = true, optional = true }
 itybity = { workspace = true }
 rand = { workspace = true }
+arrayvec = "0.7"
 
 [lints]
 workspace = true

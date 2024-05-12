@@ -1,5 +1,7 @@
 //! Binary representation types.
 
+use arrayvec::ArrayVec;
+
 use crate::{
     composite::Composite,
     primitive::{
@@ -138,7 +140,7 @@ impl<Id> BitLength for BinaryRepr<Id> {
 
 impl<Id, V, M> Repr<V, M> for BinaryRepr<Id>
 where
-    M: Memory<Id = Id, Type = V::Bit>,
+    M: Memory<Id = Id, Type = V::BackingType>,
     V: Binary,
 {
     fn get(&self, mem: &M) -> Option<V>
@@ -146,41 +148,61 @@ where
         M: MemoryGet,
     {
         match self {
-            BinaryRepr::Bit(repr) => mem.get(repr.id()).cloned().map(V::from),
+            BinaryRepr::Bit(repr) => mem.get(repr.id()).cloned().map(V::from_bit),
             BinaryRepr::U8(repr) => {
-                let mut bits: [V::Bit; 8] = core::array::from_fn(|_| V::Bit::default());
-                for (i, id) in repr.ids().iter().enumerate() {
-                    bits[i] = mem.get(id)?.clone();
-                }
-                Some(V::from_u8(bits))
+                let bits = repr
+                    .ids()
+                    .iter()
+                    .map(|id| mem.get(id).cloned())
+                    .collect::<Option<ArrayVec<V::BackingType, 8>>>()?;
+
+                Some(V::from_u8(
+                    bits.into_inner().ok().expect("array is fully initialized"),
+                ))
             }
             BinaryRepr::U16(repr) => {
-                let mut bits: [V::Bit; 16] = core::array::from_fn(|_| V::Bit::default());
-                for (i, id) in repr.ids().iter().enumerate() {
-                    bits[i] = mem.get(id)?.clone();
-                }
-                Some(V::from_u16(bits))
+                let bits = repr
+                    .ids()
+                    .iter()
+                    .map(|id| mem.get(id).cloned())
+                    .collect::<Option<ArrayVec<V::BackingType, 16>>>()?;
+
+                Some(V::from_u16(
+                    bits.into_inner().ok().expect("array is fully initialized"),
+                ))
             }
             BinaryRepr::U32(repr) => {
-                let mut bits: [V::Bit; 32] = core::array::from_fn(|_| V::Bit::default());
-                for (i, id) in repr.ids().iter().enumerate() {
-                    bits[i] = mem.get(id)?.clone();
-                }
-                Some(V::from_u32(bits))
+                let bits = repr
+                    .ids()
+                    .iter()
+                    .map(|id| mem.get(id).cloned())
+                    .collect::<Option<ArrayVec<V::BackingType, 32>>>()?;
+
+                Some(V::from_u32(
+                    bits.into_inner().ok().expect("array is fully initialized"),
+                ))
             }
             BinaryRepr::U64(repr) => {
-                let mut bits: [V::Bit; 64] = core::array::from_fn(|_| V::Bit::default());
-                for (i, id) in repr.ids().iter().enumerate() {
-                    bits[i] = mem.get(id)?.clone();
-                }
-                Some(V::from_u64(bits))
+                let bits = repr
+                    .ids()
+                    .iter()
+                    .map(|id| mem.get(id).cloned())
+                    .collect::<Option<ArrayVec<V::BackingType, 64>>>()?;
+
+                Some(V::from_u64(
+                    bits.into_inner().ok().expect("array is fully initialized"),
+                ))
             }
             BinaryRepr::U128(repr) => {
-                let mut bits: [V::Bit; 128] = core::array::from_fn(|_| V::Bit::default());
-                for (i, id) in repr.ids().iter().enumerate() {
-                    bits[i] = mem.get(id)?.clone();
-                }
-                Some(V::from_u128(bits))
+                let bits = repr
+                    .ids()
+                    .iter()
+                    .map(|id| mem.get(id).cloned())
+                    .collect::<Option<ArrayVec<V::BackingType, 128>>>()?;
+
+                Some(V::from_u128(
+                    bits.into_inner().ok().expect("array is fully initialized"),
+                ))
             }
         }
     }
