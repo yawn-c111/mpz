@@ -96,14 +96,18 @@ where
 
 impl<P> BitLength for CompositeType<P>
 where
-    P: BitLength,
+    P: Copy + BitLength,
 {
     #[inline]
     fn bit_length(&self) -> usize {
         match self {
             CompositeType::Primitive(ty) => ty.bit_length(),
-            CompositeType::Array { ty, len } => {
-                ty.as_ref().map(|ty| ty.bit_length()).unwrap_or_default() * len
+            CompositeType::Array(ty) => {
+                ty.primitive_type()
+                    .as_ref()
+                    .map(|ty| ty.bit_length())
+                    .unwrap_or_default()
+                    * ty.len()
             }
         }
     }

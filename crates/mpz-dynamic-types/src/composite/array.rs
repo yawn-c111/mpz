@@ -1,18 +1,64 @@
 extern crate alloc;
 
-use core::ops::Index;
+use core::{fmt, ops::Index};
 use std::error::Error;
 
 use crate::{
     primitive::{PrimitiveType, StaticPrimitiveType},
     repr::Repr,
-    ConvertError, MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, MemoryAlloc, MemoryGet, MemoryMut, MemoryReserve,
 };
 
 /// Array elements have inconsistent types.
 #[derive(Debug, thiserror::Error)]
 #[error("elements have an inconsistent type")]
 pub struct InconsistentType;
+
+/// An array type.
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct ArrayType<P> {
+    ty: Option<P>,
+    len: usize,
+}
+
+impl<P> ArrayType<P> {
+    /// Creates a new array type.
+    pub const fn new(ty: P, len: usize) -> Self {
+        Self { ty: Some(ty), len }
+    }
+
+    /// Creates a new empty array type.
+    pub const fn new_empty() -> Self {
+        Self { ty: None, len: 0 }
+    }
+
+    /// Returns the length of the array.
+    #[inline]
+    pub const fn len(&self) -> usize {
+        self.len
+    }
+}
+
+impl<P: Copy> ArrayType<P> {
+    /// Returns the element type.
+    #[inline]
+    pub const fn primitive_type(&self) -> Option<P> {
+        self.ty
+    }
+}
+
+impl<P: Copy> fmt::Display for ArrayType<P>
+where
+    P: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(ty) = self.primitive_type() {
+            write!(f, "[{}; {}]", ty, self.len)
+        } else {
+            write!(f, "[]")
+        }
+    }
+}
 
 /// An array.
 #[derive(Debug, Clone, PartialEq)]
@@ -89,6 +135,16 @@ impl<P: PrimitiveType> Array<P> {
     #[inline]
     pub fn primitive_type(&self) -> Option<P::Type> {
         self.elems.first().map(|elem| elem.primitive_type())
+    }
+
+    /// Returns the array type.
+    #[inline]
+    pub fn array_type(&self) -> ArrayType<P::Type> {
+        if let Some(ty) = self.primitive_type() {
+            ArrayType::new(ty, self.elems.len())
+        } else {
+            ArrayType::new_empty()
+        }
     }
 
     /// Reverses the array in place.
@@ -242,7 +298,10 @@ impl<V, R, M> Repr<Array<V>, M> for Array<R>
 where
     V: PrimitiveType,
     R: PrimitiveType<Type = V::Type> + Repr<V, M>,
+    <R as Repr<V, M>>::Type: Copy,
 {
+    type Type = ArrayType<<R as Repr<V, M>>::Type>;
+
     fn get(&self, mem: &M) -> Option<Array<V>>
     where
         M: MemoryGet,
@@ -280,6 +339,19 @@ where
                 .collect(),
         )
         .expect("array contains consistent types")
+    }
+
+    fn reserve(mem: &mut M, ty: Self::Type) -> Self
+    where
+        Self: Sized,
+        M: MemoryReserve,
+    {
+        if let Some(elem_ty) = ty.primitive_type() {
+            Array::new((0..ty.len()).map(|_| R::reserve(mem, elem_ty)).collect())
+                .expect("array contains consistent types")
+        } else {
+            Array::default()
+        }
     }
 }
 

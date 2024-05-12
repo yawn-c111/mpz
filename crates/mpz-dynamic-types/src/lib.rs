@@ -59,6 +59,20 @@ impl<T> MemoryAlloc for Vec<T> {
     }
 }
 
+/// A memory that can be reserved.
+pub trait MemoryReserve: Memory {
+    /// Reserves an id for a value.
+    fn reserve(&mut self) -> Self::Id;
+}
+
+impl<T: Default> MemoryReserve for Vec<T> {
+    fn reserve(&mut self) -> Self::Id {
+        let id = self.len();
+        self.push(Default::default());
+        id
+    }
+}
+
 /// A conversion error.
 #[derive(Debug, thiserror::Error)]
 #[error("failed to convert value: {0}")]

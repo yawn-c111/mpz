@@ -6,12 +6,12 @@ use std::fmt::Display;
 
 #[doc(hidden)]
 pub use array::ArrayIterMut;
-pub use array::{Array, ArrayIter, InconsistentType};
+pub use array::{Array, ArrayIter, ArrayType, InconsistentType};
 
 use crate::{
     primitive::{PrimitiveType, StaticPrimitiveType},
     repr::Repr,
-    ConvertError, MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, MemoryAlloc, MemoryGet, MemoryMut, MemoryReserve,
 };
 
 /// A static composite type.
@@ -25,10 +25,7 @@ impl<P: StaticPrimitiveType> StaticCompositeType<P::Type> for P {
 }
 
 impl<const N: usize, P: StaticPrimitiveType> StaticCompositeType<P::Type> for [P; N] {
-    const TYPE: CompositeType<P::Type> = CompositeType::Array {
-        ty: Some(P::TYPE),
-        len: N,
-    };
+    const TYPE: CompositeType<P::Type> = CompositeType::Array(ArrayType::new(P::TYPE, N));
 }
 
 /// Type information of a composite.
@@ -37,12 +34,7 @@ pub enum CompositeType<P> {
     /// A primitive.
     Primitive(P),
     /// An array.
-    Array {
-        /// Element type.
-        ty: Option<P>,
-        /// Length of the array.
-        len: usize,
-    },
+    Array(ArrayType<P>),
 }
 
 impl<P> From<P> for CompositeType<P> {
@@ -52,17 +44,11 @@ impl<P> From<P> for CompositeType<P> {
     }
 }
 
-impl<P: Display> Display for CompositeType<P> {
+impl<P: Copy + Display> Display for CompositeType<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CompositeType::Primitive(p) => write!(f, "{}", p),
-            CompositeType::Array { ty, len } => {
-                if let Some(ty) = ty {
-                    write!(f, "[{}; {}]", ty, len)
-                } else {
-                    write!(f, "[]")
-                }
-            }
+            CompositeType::Array(arr) => write!(f, "{}", arr),
         }
     }
 }
@@ -129,10 +115,7 @@ impl<P: PrimitiveType> Composite<P> {
     pub fn composite_type(&self) -> CompositeType<P::Type> {
         match self {
             Composite::Primitive(p) => CompositeType::Primitive(p.primitive_type()),
-            Composite::Array(arr) => CompositeType::Array {
-                ty: arr.primitive_type(),
-                len: arr.len(),
-            },
+            Composite::Array(arr) => CompositeType::Array(arr.array_type()),
         }
     }
 }
@@ -166,8 +149,10 @@ impl<V, R, M> Repr<Composite<V>, M> for Composite<R>
 where
     V: PrimitiveType,
     R: PrimitiveType<Type = V::Type> + Repr<V, M>,
-    Array<R>: Repr<Array<V>, M>,
+    Array<R>: Repr<Array<V>, M, Type = ArrayType<<R as Repr<V, M>>::Type>>,
 {
+    type Type = CompositeType<<R as Repr<V, M>>::Type>;
+
     fn get(&self, mem: &M) -> Option<Composite<V>>
     where
         M: MemoryGet,
@@ -197,6 +182,17 @@ where
         match value {
             Composite::Primitive(value) => Composite::Primitive(R::alloc(mem, value)),
             Composite::Array(value) => Composite::Array(Array::alloc(mem, value)),
+        }
+    }
+
+    fn reserve(mem: &mut M, ty: Self::Type) -> Self
+    where
+        Self: Sized,
+        M: MemoryReserve,
+    {
+        match ty {
+            CompositeType::Primitive(ty) => Composite::Primitive(R::reserve(mem, ty)),
+            CompositeType::Array(ty) => Composite::Array(Array::reserve(mem, ty)),
         }
     }
 }

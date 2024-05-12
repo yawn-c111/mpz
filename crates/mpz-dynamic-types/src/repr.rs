@@ -4,7 +4,7 @@ pub mod binary;
 
 use crate::{
     primitive::{PrimitiveType, StaticPrimitiveType},
-    ConvertError, MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, MemoryAlloc, MemoryGet, MemoryMut, MemoryReserve,
 };
 
 /// A primitive representation.
@@ -26,6 +26,9 @@ pub trait StaticPrimitiveRepr: StaticPrimitiveType {
 ///
 /// This trait provides an interface between a memory store and higher-level data types.
 pub trait Repr<V, M> {
+    /// Type information for `V`.
+    type Type;
+
     /// Gets a value from memory if it exists.
     fn get(&self, mem: &M) -> Option<V>
     where
@@ -41,4 +44,10 @@ pub trait Repr<V, M> {
     where
         Self: Sized,
         M: MemoryAlloc;
+
+    /// Defines a value in memory with the given type.
+    fn reserve(mem: &mut M, ty: Self::Type) -> Self
+    where
+        Self: Sized,
+        M: MemoryReserve;
 }

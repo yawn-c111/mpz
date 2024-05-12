@@ -9,7 +9,7 @@ use crate::{
         PrimitiveType, StaticPrimitiveType,
     },
     repr::{PrimitiveRepr, Repr, StaticPrimitiveRepr},
-    ConvertError, Memory, MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, Memory, MemoryAlloc, MemoryGet, MemoryMut, MemoryReserve,
 };
 
 /// A primitive representation.
@@ -143,6 +143,8 @@ where
     M: Memory<Id = Id, Type = V::BackingType>,
     V: Binary,
 {
+    type Type = BinaryType;
+
     fn get(&self, mem: &M) -> Option<V>
     where
         M: MemoryGet,
@@ -260,6 +262,23 @@ where
             }
             BinaryType::U128 => {
                 BinaryRepr::U128(U128::new(value.into_u128().map(|bit| mem.alloc(bit))))
+            }
+        }
+    }
+
+    fn reserve(mem: &mut M, ty: Self::Type) -> Self
+    where
+        Self: Sized,
+        M: MemoryReserve,
+    {
+        match ty {
+            BinaryType::Bit => BinaryRepr::Bit(Bit::new(mem.reserve())),
+            BinaryType::U8 => BinaryRepr::U8(U8::new(core::array::from_fn(|_| mem.reserve()))),
+            BinaryType::U16 => BinaryRepr::U16(U16::new(core::array::from_fn(|_| mem.reserve()))),
+            BinaryType::U32 => BinaryRepr::U32(U32::new(core::array::from_fn(|_| mem.reserve()))),
+            BinaryType::U64 => BinaryRepr::U64(U64::new(core::array::from_fn(|_| mem.reserve()))),
+            BinaryType::U128 => {
+                BinaryRepr::U128(U128::new(core::array::from_fn(|_| mem.reserve())))
             }
         }
     }
