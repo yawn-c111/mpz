@@ -48,39 +48,17 @@ pub(crate) fn evaluate_impl(item: TokenStream) -> TokenStream {
 
     let return_expr: Expr = match &return_type {
         Type::Tuple(tuple) => {
-            let ids = 0..tuple.elems.len();
             let elems = tuple.elems.iter();
             parse_quote!(
                 (
                     #(
-                        {
-                            let output = outputs.pop().unwrap();
-                            if output.composite_type() != <#elems>::TYPE {
-                                return Err(CircuitError::InvalidOutputType {
-                                    id: #ids,
-                                    expected: output.composite_type(),
-                                    actual: <#elems>::TYPE,
-                                });
-                            }
-                            <#elems>::try_from(output).expect("value type matches")
-                        }
+                        <#elems>::try_from(outputs.pop().unwrap()).expect("type signature matches circuit")
                     ),*
                 )
             )
         }
         ty => {
-            parse_quote!(
-            {
-                let output = outputs.pop().unwrap();
-                if output.composite_type() != <#ty>::TYPE {
-                    return Err(CircuitError::InvalidOutputType {
-                        id: 0,
-                        expected: output.composite_type(),
-                        actual: <#ty>::TYPE,
-                    });
-                }
-                <#ty>::try_from(output).expect("value type matches")
-            })
+            parse_quote!(<#ty>::try_from(outputs.pop().unwrap()).expect("type signature matches circuit"))
         }
     };
 

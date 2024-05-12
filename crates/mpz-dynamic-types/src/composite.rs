@@ -11,7 +11,7 @@ pub use array::{Array, ArrayIter, InconsistentType};
 use crate::{
     primitive::{PrimitiveType, StaticPrimitiveType},
     repr::Repr,
-    MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, MemoryAlloc, MemoryGet, MemoryMut,
 };
 
 /// A static composite type.
@@ -143,6 +143,22 @@ where
 {
     fn from(arr: T) -> Self {
         Composite::Array(arr.into())
+    }
+}
+
+impl<P, T> TryFrom<Composite<P>> for Vec<T>
+where
+    Vec<T>: TryFrom<Array<P>, Error = ConvertError>,
+{
+    type Error = ConvertError;
+
+    fn try_from(value: Composite<P>) -> Result<Self, Self::Error> {
+        match value {
+            Composite::Array(array) => Vec::try_from(array),
+            Composite::Primitive(_) => {
+                Err(ConvertError::new("failed to convert primitive to array"))
+            }
+        }
     }
 }
 

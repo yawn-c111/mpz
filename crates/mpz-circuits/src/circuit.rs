@@ -20,12 +20,6 @@ pub enum CircuitError {
         expected: ValueType,
         actual: ValueType,
     },
-    #[error("Invalid output type {id}: expected {expected}, got {actual}")]
-    InvalidOutputType {
-        id: usize,
-        expected: ValueType,
-        actual: ValueType,
-    },
 }
 
 /// A binary circuit.

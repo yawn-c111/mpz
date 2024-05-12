@@ -1,11 +1,12 @@
 extern crate alloc;
 
 use core::ops::Index;
+use std::error::Error;
 
 use crate::{
     primitive::{PrimitiveType, StaticPrimitiveType},
     repr::Repr,
-    MemoryAlloc, MemoryGet, MemoryMut,
+    ConvertError, MemoryAlloc, MemoryGet, MemoryMut,
 };
 
 /// Array elements have inconsistent types.
@@ -168,6 +169,17 @@ where
     }
 }
 
+impl<'a, const N: usize, T, P> From<&'a [T; N]> for Array<P>
+where
+    T: StaticPrimitiveType<Type = P::Type> + Into<P> + Clone,
+    P: PrimitiveType,
+{
+    #[inline]
+    fn from(elems: &'a [T; N]) -> Self {
+        (elems.as_slice()).into()
+    }
+}
+
 impl<T, P> From<Vec<T>> for Array<P>
 where
     T: StaticPrimitiveType<Type = P::Type> + Into<P>,
@@ -206,6 +218,23 @@ impl<const N: usize, P> TryFrom<Array<P>> for [P; N] {
 
     fn try_from(value: Array<P>) -> Result<Self, Self::Error> {
         value.elems.try_into()
+    }
+}
+
+impl<P, T> TryFrom<Array<P>> for Vec<T>
+where
+    T: TryFrom<P>,
+    T::Error: Into<Box<dyn Error + Send + Sync>>,
+{
+    type Error = ConvertError;
+
+    fn try_from(value: Array<P>) -> Result<Self, Self::Error> {
+        value
+            .elems
+            .into_iter()
+            .map(T::try_from)
+            .collect::<Result<_, _>>()
+            .map_err(ConvertError::new)
     }
 }
 
