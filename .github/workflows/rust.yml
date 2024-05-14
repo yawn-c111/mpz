@@ -17,20 +17,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2.5.0
+      - uses: Swatinem/rust-cache@v2.7.3
 
       - name: "Build"
         run: cargo build
 
       - name: "Test"
-        run: cargo test --lib --bins --tests --examples --workspace
+        # Run all tests (bins, examples, lib, integration and docs)
+        # https://doc.rust-lang.org/cargo/commands/cargo-test.html#target-selection
+        run: cargo test
 
       - name: "Check documentation"
         # env:
@@ -42,7 +44,7 @@ jobs:
     name: "Miri"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Miri
         run: |
@@ -60,7 +62,7 @@ jobs:
     name: Rustfmt and Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Nightly with rustfmt and clipy
         uses: dtolnay/rust-toolchain@stable
