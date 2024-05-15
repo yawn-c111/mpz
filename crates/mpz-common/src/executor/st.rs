@@ -3,7 +3,10 @@ use async_trait::async_trait;
 use scoped_futures::ScopedBoxFuture;
 use serio::{IoSink, IoStream};
 
-use crate::{context::Context, ThreadId};
+use crate::{
+    context::{Context, ContextError},
+    ThreadId,
+};
 
 /// A single-threaded executor.
 pub struct STExecutor<Io> {
@@ -31,7 +34,7 @@ where
 #[async_trait]
 impl<Io> Context for STExecutor<Io>
 where
-    Io: IoSink + IoStream + Send + Unpin + 'static,
+    Io: IoSink + IoStream + Send + Sync + Unpin + 'static,
 {
     type Io = Io;
 
@@ -43,7 +46,7 @@ where
         &mut self.io
     }
 
-    async fn join<'a, A, B, RA, RB>(&'a mut self, a: A, b: B) -> (RA, RB)
+    async fn join<'a, A, B, RA, RB>(&'a mut self, a: A, b: B) -> Result<(RA, RB), ContextError>
     where
         A: for<'b> FnOnce(&'b mut Self) -> ScopedBoxFuture<'a, 'b, RA> + Send + 'a,
         B: for<'b> FnOnce(&'b mut Self) -> ScopedBoxFuture<'a, 'b, RB> + Send + 'a,
@@ -52,10 +55,14 @@ where
     {
         let a = a(self).await;
         let b = b(self).await;
-        (a, b)
+        Ok((a, b))
     }
 
-    async fn try_join<'a, A, B, RA, RB, E>(&'a mut self, a: A, b: B) -> Result<(RA, RB), E>
+    async fn try_join<'a, A, B, RA, RB, E>(
+        &'a mut self,
+        a: A,
+        b: B,
+    ) -> Result<Result<(RA, RB), E>, ContextError>
     where
         A: for<'b> FnOnce(&'b mut Self) -> ScopedBoxFuture<'a, 'b, Result<RA, E>> + Send + 'a,
         B: for<'b> FnOnce(&'b mut Self) -> ScopedBoxFuture<'a, 'b, Result<RB, E>> + Send + 'a,
@@ -63,9 +70,13 @@ where
         RB: Send + 'a,
         E: Send + 'a,
     {
-        let a = a(self).await?;
-        let b = b(self).await?;
-        Ok((a, b))
+        let try_join = |a: A, b: B| async move {
+            let a = a(self).await?;
+            let b = b(self).await?;
+            Ok((a, b))
+        };
+
+        Ok(try_join(a, b).await)
     }
 }
 
@@ -103,7 +114,8 @@ mod tests {
                     .scope_boxed()
                 },
             )
-            .await;
+            .await
+            .unwrap();
 
             // Make sure we can mutate the fields after borrowing them in the async closures.
             self.a = ThreadId::default();
