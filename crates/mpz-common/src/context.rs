@@ -17,7 +17,7 @@ pub struct ContextError {
 }
 
 impl ContextError {
-    pub(crate) fn new_with_source<E: Into<Box<dyn std::error::Error + Send + Sync>>>(
+    pub(crate) fn new<E: Into<Box<dyn std::error::Error + Send + Sync>>>(
         kind: ErrorKind,
         source: E,
     ) -> Self {
@@ -31,12 +31,14 @@ impl ContextError {
 #[derive(Debug)]
 pub(crate) enum ErrorKind {
     Mux,
+    Thread,
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ErrorKind::Mux => write!(f, "multiplexer error"),
+            ErrorKind::Thread => write!(f, "thread error"),
         }
     }
 }

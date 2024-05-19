@@ -10,43 +10,72 @@ use crate::{
 
 /// A multi-threaded executor.
 #[derive(Debug)]
-pub struct MTExecutor<M, Io> {
+pub struct MTExecutor<M> {
+    id: ThreadId,
+    mux: M,
+}
+
+impl<M> MTExecutor<M>
+where
+    M: FramedUidMux<ThreadId> + Clone,
+    M::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+{
+    /// Creates a new multi-threaded executor.
+    pub fn new(mux: M) -> Self {
+        Self {
+            id: ThreadId::default(),
+            mux,
+        }
+    }
+
+    /// Creates a new thread.
+    pub async fn new_thread(
+        &mut self,
+    ) -> Result<MTContext<M, <M as FramedUidMux<ThreadId>>::Framed>, ContextError> {
+        let id = self.id.increment().ok_or_else(|| {
+            ContextError::new(
+                ErrorKind::Thread,
+                "exceeded maximum number of threads (255)",
+            )
+        })?;
+
+        let io = self
+            .mux
+            .open_framed(&id)
+            .await
+            .map_err(|e| ContextError::new(ErrorKind::Mux, e))?;
+
+        Ok(MTContext {
+            id,
+            mux: self.mux.clone(),
+            io,
+            child: None,
+        })
+    }
+}
+
+/// A thread context from a multi-threaded executor.
+#[derive(Debug)]
+pub struct MTContext<M, Io> {
     id: ThreadId,
     mux: M,
     io: Io,
     // TODO: Support multiple children. Right now this is simpler to implement,
-    // and our `Context` trait only exposes joining two futures. Eventually we will
-    // support an API similar to `FuturesOrdered`.
+    // and our `Context` trait only exposes joining two futures.
     child: Option<Box<Self>>,
 }
 
-impl<M, Io> MTExecutor<M, Io> {
+impl<M, Io> MTContext<M, Io> {
     fn set_child(&mut self, child: Box<Self>) {
         self.child = Some(child);
     }
 }
 
-impl<M, Io> MTExecutor<M, Io>
+impl<M, Io> MTContext<M, Io>
 where
     M: FramedUidMux<ThreadId, Framed = Io> + Clone,
     M::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
 {
-    /// Creates a new multi-threaded executor.
-    pub async fn new(mux: M) -> Result<Self, ContextError> {
-        let id = ThreadId::default();
-        let io = mux
-            .open_framed(&id)
-            .await
-            .map_err(|e| ContextError::new_with_source(ErrorKind::Mux, e))?;
-
-        Ok(Self {
-            id,
-            mux,
-            io,
-            child: None,
-        })
-    }
-
     async fn fork(&mut self) -> Result<Box<Self>, ContextError> {
         // Forking a thread context is only performed once, afterwhich the child ctx
         // is stored for later use.
@@ -60,7 +89,7 @@ where
             .mux
             .open_framed(&child_id)
             .await
-            .map_err(|e| ContextError::new_with_source(ErrorKind::Mux, e))?;
+            .map_err(|e| ContextError::new(ErrorKind::Mux, e))?;
 
         let child = Self {
             id: child_id,
@@ -74,7 +103,7 @@ where
 }
 
 #[async_trait]
-impl<M, Io> Context for MTExecutor<M, Io>
+impl<M, Io> Context for MTContext<M, Io>
 where
     M: FramedUidMux<ThreadId, Framed = Io> + Clone + Send + Sync,
     M::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
@@ -164,15 +193,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_mt_executor_join() {
-        tracing_subscriber::fmt::init();
         let ((mux_a, fut_a), (mux_b, fut_b)) = test_yamux_pair_framed(1024, Bincode);
 
         tokio::spawn(async move {
             futures::try_join!(fut_a.into_future(), fut_b.into_future()).unwrap();
         });
 
+        let mut exec_a = MTExecutor::new(mux_a);
+        let mut exec_b = MTExecutor::new(mux_b);
+
         let (mut ctx_a, mut ctx_b) =
-            futures::try_join!(MTExecutor::new(mux_a), MTExecutor::new(mux_b)).unwrap();
+            futures::try_join!(exec_a.new_thread(), exec_b.new_thread()).unwrap();
 
         let mut test_a = LifetimeTest::default();
         let mut test_b = LifetimeTest::default();
