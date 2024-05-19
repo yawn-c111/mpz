@@ -1,51 +1,46 @@
 //! Mocked DEAP VMs for testing
 
-use mpz_ot::ideal::{ideal_ot_shared_pair, IdealSharedOTReceiver, IdealSharedOTSender};
-use utils_aio::mux::{mock::MockMuxChannelFactory, MuxChannel};
+use mpz_common::executor::{test_st_executor, STExecutor};
+use mpz_core::Block;
+use mpz_ot::ideal::ot::{ideal_ot, IdealOTReceiver, IdealOTSender};
+use serio::channel::MemoryDuplex;
 
-use crate::config::Role;
+use crate::{
+    config::Role,
+    protocol::deap::vm::{DEAPThread, DEAPVm},
+};
 
-use super::{vm::DEAPVm, DEAPThread};
+type OTSender = IdealOTSender<[Block; 2]>;
+type OTReceiver = IdealOTReceiver<Block>;
+type Ctx = STExecutor<MemoryDuplex>;
 
 /// Mock DEAP Leader VM.
-pub type MockLeader = DEAPVm<IdealSharedOTSender, IdealSharedOTReceiver>;
+pub type MockLeader = DEAPVm<Ctx, OTSender, OTReceiver>;
 /// Mock DEAP Leader thread.
-pub type MockLeaderThread = DEAPThread<IdealSharedOTSender, IdealSharedOTReceiver>;
+pub type MockLeaderThread = DEAPThread<Ctx, OTSender, OTReceiver>;
 /// Mock DEAP Follower VM.
-pub type MockFollower = DEAPVm<IdealSharedOTSender, IdealSharedOTReceiver>;
+pub type MockFollower = DEAPVm<Ctx, OTSender, OTReceiver>;
 /// Mock DEAP Follower thread.
-pub type MockFollowerThread = DEAPThread<IdealSharedOTSender, IdealSharedOTReceiver>;
+pub type MockFollowerThread = DEAPThread<Ctx, OTSender, OTReceiver>;
 
 /// Create a pair of mocked DEAP VMs
-pub async fn create_mock_deap_vm(
-    id: &str,
-) -> (
-    DEAPVm<IdealSharedOTSender, IdealSharedOTReceiver>,
-    DEAPVm<IdealSharedOTSender, IdealSharedOTReceiver>,
-) {
-    let mut mux_factory = MockMuxChannelFactory::new();
-    let (leader_ot_send, follower_ot_recv) = ideal_ot_shared_pair();
-    let (follower_ot_send, leader_ot_recv) = ideal_ot_shared_pair();
-
-    let leader_channel = mux_factory.get_channel(id).await.unwrap();
-    let follower_channel = mux_factory.get_channel(id).await.unwrap();
+pub fn create_mock_deap_vm() -> (MockLeader, MockFollower) {
+    let (leader_ctx, follower_ctx) = test_st_executor(128);
+    let (leader_ot_send, follower_ot_recv) = ideal_ot();
+    let (follower_ot_send, leader_ot_recv) = ideal_ot();
 
     let leader = DEAPVm::new(
-        id,
         Role::Leader,
         [42u8; 32],
-        leader_channel,
-        Box::new(mux_factory.clone()),
+        leader_ctx,
         leader_ot_send,
         leader_ot_recv,
     );
 
     let follower = DEAPVm::new(
-        id,
         Role::Follower,
         [69u8; 32],
-        follower_channel,
-        Box::new(mux_factory),
+        follower_ctx,
         follower_ot_send,
         follower_ot_recv,
     );

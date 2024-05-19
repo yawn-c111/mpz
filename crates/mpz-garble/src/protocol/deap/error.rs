@@ -12,6 +12,8 @@ pub enum DEAPError {
     UnexpectedMessage(GarbleMessage),
     #[error(transparent)]
     IOError(#[from] std::io::Error),
+    #[error("context error: {0}")]
+    ContextError(#[from] mpz_common::ContextError),
     #[error(transparent)]
     GeneratorError(#[from] crate::generator::GeneratorError),
     #[error(transparent)]

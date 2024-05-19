@@ -9,16 +9,16 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::{Sink, SinkExt};
 use mpz_circuits::{
     types::{Value, ValueType},
     Circuit,
 };
+use mpz_common::Context;
 use mpz_core::hash::Hash;
 use mpz_garble_core::{
-    encoding_state, msg::GarbleMessage, ChaChaEncoder, EncodedValue, Encoder,
-    Generator as GeneratorCore,
+    encoding_state, ChaChaEncoder, EncodedValue, Encoder, Generator as GeneratorCore,
 };
+use serio::SinkExt;
 use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use crate::{
@@ -142,24 +142,20 @@ impl Generator {
     /// - `values` - The assigned values
     /// - `sink` - The sink to send the encodings to the evaluator
     /// - `ot` - The OT sender
-    pub async fn setup_assigned_values<
-        S: Sink<GarbleMessage, Error = std::io::Error> + Unpin,
-        OT: OTSendEncoding,
-    >(
+    pub async fn setup_assigned_values<Ctx: Context, OT: OTSendEncoding<Ctx>>(
         &self,
-        id: &str,
+        ctx: &mut Ctx,
         values: &AssignedValues,
-        sink: &mut S,
-        ot: &OT,
+        ot: &mut OT,
     ) -> Result<(), GeneratorError> {
         let ot_send_values = values.blind.clone();
         let mut direct_send_values = values.public.clone();
         direct_send_values.extend(values.private.iter().cloned());
 
-        futures::try_join!(
-            self.ot_send_active_encodings(id, &ot_send_values, ot),
-            self.direct_send_active_encodings(&direct_send_values, sink)
-        )?;
+        self.direct_send_active_encodings(ctx, &direct_send_values)
+            .await?;
+        self.ot_send_active_encodings(ctx, &ot_send_values, ot)
+            .await?;
 
         Ok(())
     }
@@ -171,11 +167,11 @@ impl Generator {
     /// - `id` - The ID of this operation
     /// - `values` - The values to send
     /// - `ot` - The OT sender
-    pub(crate) async fn ot_send_active_encodings<OT: OTSendEncoding>(
+    pub(crate) async fn ot_send_active_encodings<Ctx: Context, OT: OTSendEncoding<Ctx>>(
         &self,
-        id: &str,
+        ctx: &mut Ctx,
         values: &[(ValueId, ValueType)],
-        ot: &OT,
+        ot: &mut OT,
     ) -> Result<(), GeneratorError> {
         if values.is_empty() {
             return Ok(());
@@ -196,7 +192,7 @@ impl Generator {
                 .collect::<Result<Vec<_>, GeneratorError>>()?
         };
 
-        ot.send(id, full_encodings).await?;
+        ot.send(ctx, full_encodings).await?;
 
         Ok(())
     }
@@ -207,12 +203,10 @@ impl Generator {
     ///
     /// - `values` - The values to send
     /// - `sink` - The sink to send the encodings to the evaluator
-    pub(crate) async fn direct_send_active_encodings<
-        S: Sink<GarbleMessage, Error = std::io::Error> + Unpin,
-    >(
+    pub(crate) async fn direct_send_active_encodings<Ctx: Context>(
         &self,
+        ctx: &mut Ctx,
         values: &[(ValueId, Value)],
-        sink: &mut S,
     ) -> Result<(), GeneratorError> {
         if values.is_empty() {
             return Ok(());
@@ -236,8 +230,7 @@ impl Generator {
                 .collect::<Result<Vec<_>, GeneratorError>>()?
         };
 
-        sink.send(GarbleMessage::ActiveValues(active_encodings))
-            .await?;
+        ctx.io_mut().send(active_encodings).await?;
 
         Ok(())
     }
@@ -253,12 +246,12 @@ impl Generator {
     /// * `outputs` - The outputs of the circuit
     /// * `sink` - The sink to send the garbled circuit to the evaluator
     /// * `hash` - Whether to hash the circuit
-    pub async fn generate<S: Sink<GarbleMessage, Error = std::io::Error> + Unpin>(
+    pub async fn generate<Ctx: Context>(
         &self,
+        ctx: &mut Ctx,
         circ: Arc<Circuit>,
         inputs: &[ValueRef],
         outputs: &[ValueRef],
-        sink: &mut S,
         hash: bool,
     ) -> Result<(Vec<EncodedValue<encoding_state::Full>>, Option<Hash>), GeneratorError> {
         let refs = CircuitRefs {
@@ -316,7 +309,7 @@ impl Generator {
             .await;
 
             if !batch.is_empty() {
-                sink.send(GarbleMessage::EncryptedGates(batch)).await?;
+                ctx.io_mut().send(batch).await?;
             }
         }
 
@@ -324,13 +317,12 @@ impl Generator {
         let hash = gen.hash();
 
         if self.config.encoding_commitments {
-            let commitments = encoded_outputs
+            let commitments: Vec<_> = encoded_outputs
                 .iter()
                 .map(|output| output.commit())
                 .collect();
 
-            sink.send(GarbleMessage::EncodingCommitments(commitments))
-                .await?;
+            ctx.io_mut().send(commitments).await?;
         }
 
         // Add the outputs to the memory and set as active.
@@ -353,10 +345,10 @@ impl Generator {
     ///
     /// * `values` - The values to decode
     /// * `sink` - The sink to send the decodings with
-    pub async fn decode<S: Sink<GarbleMessage, Error = std::io::Error> + Unpin>(
+    pub async fn decode<Ctx: Context>(
         &self,
+        ctx: &mut Ctx,
         values: &[ValueRef],
-        sink: &mut S,
     ) -> Result<(), GeneratorError> {
         let decodings = {
             let state = self.state();
@@ -372,7 +364,7 @@ impl Generator {
                 .collect::<Result<Vec<_>, _>>()?
         };
 
-        sink.send(GarbleMessage::ValueDecodings(decodings)).await?;
+        ctx.io_mut().send(decodings).await?;
 
         Ok(())
     }
