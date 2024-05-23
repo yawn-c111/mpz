@@ -1,3 +1,5 @@
+//! Task queues.
+
 mod round_robin;
 mod simple;
 
