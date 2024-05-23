@@ -1,10 +1,10 @@
 use async_trait::async_trait;
-
 use scoped_futures::ScopedBoxFuture;
 use serio::{IoSink, IoStream};
 
 use crate::{
     context::{Context, ContextError},
+    queue::SimpleQueue,
     ThreadId,
 };
 
@@ -37,13 +37,26 @@ where
     Io: IoSink + IoStream + Send + Sync + Unpin + 'static,
 {
     type Io = Io;
+    type Queue<'a, R> = SimpleQueue<'a, Self, R> where R: Send + 'static, Self: Sized + 'a;
 
     fn id(&self) -> &ThreadId {
         &self.id
     }
 
+    fn max_concurrency(&self) -> usize {
+        1
+    }
+
     fn io_mut(&mut self) -> &mut Self::Io {
         &mut self.io
+    }
+
+    async fn queue<R>(&mut self) -> Result<Self::Queue<'_, R>, ContextError>
+    where
+        R: Send + 'static,
+        Self: Sized,
+    {
+        Ok(SimpleQueue::new(self))
     }
 
     async fn join<'a, A, B, RA, RB>(&'a mut self, a: A, b: B) -> Result<(RA, RB), ContextError>

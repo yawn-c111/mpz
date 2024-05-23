@@ -49,8 +49,8 @@ mod test_utils {
         let fut_io =
             futures::future::try_join(fut_0.into_future(), fut_1.into_future()).map_ok(|_| ());
 
-        let exec_0 = MTExecutor::new(mux_0);
-        let exec_1 = MTExecutor::new(mux_1);
+        let exec_0 = MTExecutor::new(mux_0, 8);
+        let exec_1 = MTExecutor::new(mux_1, 8);
 
         ((exec_0, exec_1), fut_io)
     }

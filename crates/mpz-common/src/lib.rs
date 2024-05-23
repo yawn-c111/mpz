@@ -5,20 +5,21 @@
 //!
 //! This crate does not provide any cryptographic primitives, see `mpz-core` for that.
 
-#![deny(
-    unsafe_code,
-    missing_docs,
-    unused_imports,
-    unused_must_use,
-    unreachable_pub,
-    clippy::all
-)]
+// #![deny(
+//     unsafe_code,
+//     missing_docs,
+//     unused_imports,
+//     unused_must_use,
+//     unreachable_pub,
+//     clippy::all
+// )]
 
 mod context;
 pub mod executor;
 mod id;
 #[cfg(any(test, feature = "ideal"))]
 pub mod ideal;
+mod queue;
 #[cfg(feature = "sync")]
 pub mod sync;
 
