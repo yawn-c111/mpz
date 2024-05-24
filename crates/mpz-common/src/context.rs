@@ -63,6 +63,26 @@ pub trait Context: Send + Sync {
     /// Returns a mutable reference to the thread's I/O channel.
     fn io_mut(&mut self) -> &mut Self::Io;
 
+    /// Executes a task that may block the thread.
+    ///
+    /// If CPU multi-threading is available, the task is executed on a separate thread. Otherwise,
+    /// the task is executed on the current thread and can block the executor.
+    ///
+    /// # Deadlocks
+    ///
+    /// This method may cause deadlocks if the task blocks and the executor can not make progress.
+    /// Generally, one should *never* block across an await point. This method is intended for operations
+    /// that are CPU-bound but require access to a thread context.
+    ///
+    /// # Overhead
+    ///
+    /// This method has an inherent overhead and should only be used for tasks that are CPU-bound. Otherwise,
+    /// prefer using [`Context::queue`] or [`Context::join`] to execute tasks concurrently.
+    async fn blocking<F, R>(&mut self, f: F) -> Result<R, ContextError>
+    where
+        F: for<'a> FnOnce(&'a mut Self) -> ScopedBoxFuture<'static, 'a, R> + Send + 'static,
+        R: Send + 'static;
+
     /// Returns a new task queue.
     ///
     /// Implementations may not be able to fork, in which case the tasks may be executed
@@ -107,6 +127,78 @@ pub trait Context: Send + Sync {
         E: Send + 'a;
 }
 
+/// A convenience macro for executing a blocking task with a context.
+///
+/// This macro calls `Context::blocking` under the hood.
+///
+/// The expression must be `Send + 'static`, including it's returned type.
+///
+/// All variables referenced in the expression are moved to the backend scope.
+///
+///
+/// # Example
+///
+/// ```rust
+/// # #[cfg(feature = "test-utils")]
+/// {
+/// # use mpz_common::blocking;
+/// # let (mut ctx, _) = mpz_common::executor::test_st_executor(1);
+/// # futures::executor::block_on(async {
+/// let a = 1u8;
+/// let b = 2u8;
+///
+/// let sum = blocking!(ctx, async move { a + b }).unwrap();
+///
+/// assert_eq!(sum, 3);
+/// # });
+/// }
+/// ```
+///
+/// # Example: Returned arguments
+///
+/// When variables used in the expression they are moved into the backend scope. If you still need
+/// to use them after evaluating the expression you can have them returned using the following syntax:
+///
+/// ```rust
+/// # #[cfg(feature = "test-utils")]
+/// {
+/// # use mpz_common::blocking;
+/// # let (mut ctx, _) = mpz_common::executor::test_st_executor(1);
+/// struct NotCopy(u32);
+///
+/// # futures::executor::block_on(async {
+/// let a = NotCopy(1);
+/// let b = NotCopy(2);
+///
+/// let (a, b, sum) = blocking! {
+///    ctx,
+///    (a, b) => async move { a.0 + b.0 }
+/// }.unwrap();
+///
+/// assert_eq!(a.0, 1);
+/// assert_eq!(b.0, 2);
+/// assert_eq!(sum, 3);
+/// # });
+/// }
+/// ```
+#[macro_export]
+macro_rules! blocking {
+    ($ctx:ident, ($($arg:ident),+) => $task:expr) => {
+        blocking!(
+            $ctx,
+            async {
+                let output = $task.await;
+                ($($arg),+, output)
+            }
+        )
+    };
+    ($ctx:ident, $task:expr) => {{
+        #[allow(unused_imports)]
+        use $crate::{scoped_futures::ScopedFutureExt, Context};
+        $ctx.blocking(move |$ctx| $task.scope_boxed()).await
+    }};
+}
+
 /// A convenience macro for forking a context and joining two tasks concurrently.
 ///
 /// This macro calls `Context::join` under the hood.
@@ -136,32 +228,66 @@ macro_rules! try_join {
 
 #[cfg(test)]
 mod tests {
-    use crate::executor::test_st_executor;
+    use crate::{executor::test_st_executor, Context};
+    use futures::executor::block_on;
+
+    #[test]
+    fn test_blocking_macro() {
+        let (mut ctx, _) = test_st_executor(1);
+
+        let id = block_on(async { blocking!(ctx, async { ctx.id().clone() }).unwrap() });
+
+        assert_eq!(&id, ctx.id());
+    }
+
+    #[test]
+    fn test_blocking_macro_with_args() {
+        struct NotCopy(u8);
+
+        let (mut ctx, _) = test_st_executor(1);
+
+        let arg = NotCopy(42);
+
+        let (arg, id) = block_on(async {
+            blocking! {
+                ctx,
+                (arg) => async {
+                    assert_eq!(arg.0, 42);
+                    ctx.id().clone()
+                }
+            }
+            .unwrap()
+        });
+
+        assert_eq!(&id, ctx.id());
+        assert_eq!(arg.0, 42);
+    }
 
     #[test]
     fn test_join_macro() {
         let (mut ctx, _) = test_st_executor(1);
 
-        futures::executor::block_on(async {
-            join!(ctx, async { println!("{:?}", ctx.id()) }, async {
-                println!("{:?}", ctx.id())
-            })
-            .unwrap()
+        let (id_0, id_1) = block_on(async {
+            join!(ctx, async { ctx.id().clone() }, async { ctx.id().clone() }).unwrap()
         });
+
+        assert_eq!(&id_0, ctx.id());
+        assert_eq!(&id_1, ctx.id());
     }
 
     #[test]
     fn test_try_join_macro() {
         let (mut ctx, _) = test_st_executor(1);
 
-        futures::executor::block_on(async {
-            try_join!(
-                ctx,
-                async { Ok::<_, ()>(println!("{:?}", ctx.id())) },
-                async { Ok::<_, ()>(println!("{:?}", ctx.id())) }
-            )
+        let (id_0, id_1) = block_on(async {
+            try_join!(ctx, async { Ok::<_, ()>(ctx.id().clone()) }, async {
+                Ok::<_, ()>(ctx.id().clone())
+            })
             .unwrap()
-            .unwrap();
+            .unwrap()
         });
+
+        assert_eq!(&id_0, ctx.id());
+        assert_eq!(&id_1, ctx.id());
     }
 }

@@ -1,9 +1,11 @@
 use async_trait::async_trait;
+
 use scoped_futures::ScopedBoxFuture;
 use serio::{IoSink, IoStream};
 
 use crate::{
     context::{Context, ContextError},
+    cpu::CpuBackend,
     queue::SimpleQueue,
     ThreadId,
 };
@@ -11,6 +13,14 @@ use crate::{
 /// A single-threaded executor.
 pub struct STExecutor<Io> {
     id: ThreadId,
+    // Ideally "scoped futures" would exist, but they don't, so we use an
+    // `Option` to allow us to take the state out of the struct and send it
+    // to another thread in `Context::blocking`.
+    inner: Option<Inner<Io>>,
+}
+
+#[derive(Debug)]
+struct Inner<Io> {
     io: Io,
 }
 
@@ -23,11 +33,19 @@ where
     /// # Arguments
     ///
     /// * `io` - The I/O channel used by the executor.
+    #[inline]
     pub fn new(io: Io) -> Self {
         Self {
             id: ThreadId::default(),
-            io,
+            inner: Some(Inner { io }),
         }
+    }
+
+    #[inline]
+    fn inner(&mut self) -> &mut Inner<Io> {
+        self.inner
+            .as_mut()
+            .expect("context is never left uninitialized")
     }
 }
 
@@ -48,7 +66,28 @@ where
     }
 
     fn io_mut(&mut self) -> &mut Self::Io {
-        &mut self.io
+        &mut self.inner().io
+    }
+
+    async fn blocking<F, R>(&mut self, f: F) -> Result<R, ContextError>
+    where
+        F: for<'a> FnOnce(&'a mut Self) -> ScopedBoxFuture<'static, 'a, R> + Send + 'static,
+        R: Send + 'static,
+    {
+        let mut ctx = Self {
+            id: self.id.clone(),
+            inner: self.inner.take(),
+        };
+
+        let (inner, output) = CpuBackend::blocking_async(async move {
+            let output = f(&mut ctx).await;
+            (ctx.inner, output)
+        })
+        .await;
+
+        self.inner = inner;
+
+        Ok(output)
     }
 
     async fn queue<R>(&mut self) -> Result<Self::Queue<'_, R>, ContextError>
@@ -99,6 +138,8 @@ mod tests {
     use scoped_futures::ScopedFutureExt;
     use serio::channel::duplex;
 
+    use crate::blocking;
+
     use super::*;
 
     #[derive(Debug, Default)]
@@ -143,5 +184,18 @@ mod tests {
         let mut test = LifetimeTest::default();
 
         block_on(test.foo(&mut ctx));
+    }
+
+    #[test]
+    fn test_st_executor_blocking() {
+        let (io, _) = duplex(1);
+        let mut ctx = STExecutor::new(io);
+
+        block_on(async {
+            let id = blocking!(ctx, async { ctx.id().clone() }).unwrap();
+
+            assert_eq!(&id, ctx.id());
+            assert!(ctx.inner.is_some());
+        });
     }
 }

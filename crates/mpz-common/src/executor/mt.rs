@@ -6,6 +6,7 @@ use uid_mux::FramedUidMux;
 
 use crate::{
     context::{ContextError, ErrorKind},
+    cpu::CpuBackend,
     queue::RRQueue,
     Context, ThreadId,
 };
@@ -17,7 +18,7 @@ const MAX_THREADS: usize = 255;
 pub struct MTExecutor<M> {
     id: ThreadId,
     mux: M,
-    concurrency: usize,
+    max_concurrency: usize,
 }
 
 impl<M> MTExecutor<M>
@@ -30,12 +31,12 @@ where
     /// # Arguments
     ///
     /// * `mux` - The multiplexer used by the executor.
-    /// * `concurrency` - The degree of concurrency to use.
-    pub fn new(mux: M, concurrency: usize) -> Self {
+    /// * `concurrency` - The max degree of concurrency to use.
+    pub fn new(mux: M, max_concurrency: usize) -> Self {
         Self {
             id: ThreadId::default(),
             mux,
-            concurrency,
+            max_concurrency,
         }
     }
 
@@ -56,7 +57,12 @@ where
             .await
             .map_err(|e| ContextError::new(ErrorKind::Mux, e))?;
 
-        Ok(MTContext::new(id, self.mux.clone(), io, self.concurrency))
+        Ok(MTContext::new(
+            id,
+            self.mux.clone(),
+            io,
+            self.max_concurrency,
+        ))
     }
 }
 
@@ -65,28 +71,69 @@ where
 pub struct MTContext<M, Io> {
     id: ThreadId,
     mux: M,
+    // Ideally "scoped futures" would exist, but they don't, so we use an
+    // `Option` to allow us to take the state out of the struct and send it
+    // to another thread in `Context::blocking`.
+    inner: Option<Inner<M, Io>>,
+    max_concurrency: usize,
+}
+
+#[derive(Debug)]
+struct Inner<M, Io> {
     io: Io,
     // Child threads are created lazily, and are cached for reuse.
-    children: Option<Children<M, Io>>,
+    children: Children<M, Io>,
 }
 
 impl<M, Io> MTContext<M, Io> {
-    fn new(id: ThreadId, mux: M, io: Io, concurrency: usize) -> Self {
+    fn new(id: ThreadId, mux: M, io: Io, max_concurrency: usize) -> Self {
         let child_id = id.fork();
 
         Self {
             id,
             mux,
-            io,
-            children: Some(Children::new(child_id, concurrency)),
+            inner: Some(Inner {
+                io,
+                children: Children::new(child_id, max_concurrency),
+            }),
+            max_concurrency,
         }
+    }
+
+    #[inline]
+    fn inner(&self) -> &Inner<M, Io> {
+        self.inner
+            .as_ref()
+            .expect("context is never left uninitialized")
+    }
+
+    #[inline]
+    fn inner_mut(&mut self) -> &mut Inner<M, Io> {
+        self.inner
+            .as_mut()
+            .expect("context is never left uninitialized")
+    }
+}
+
+impl<M, Io> MTContext<M, Io>
+where
+    M: FramedUidMux<ThreadId, Framed = Io> + Clone + Send + Sync + 'static,
+    M::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
+    Io: IoDuplex + Send + Sync + Unpin + 'static,
+{
+    async fn alloc_max(&mut self) -> Result<(), ContextError> {
+        let inner = self
+            .inner
+            .as_mut()
+            .expect("context is never left uninitialized");
+        inner.children.alloc(&self.mux, self.max_concurrency).await
     }
 }
 
 #[async_trait]
 impl<M, Io> Context for MTContext<M, Io>
 where
-    M: FramedUidMux<ThreadId, Framed = Io> + Clone + Send + Sync,
+    M: FramedUidMux<ThreadId, Framed = Io> + Clone + Send + Sync + 'static,
     M::Error: Into<Box<dyn std::error::Error + Send + Sync + 'static>>,
     Io: IoDuplex + Send + Sync + Unpin + 'static,
 {
@@ -101,14 +148,34 @@ where
     }
 
     fn max_concurrency(&self) -> usize {
-        self.children
-            .as_ref()
-            .expect("children were not left uninitialized")
-            .max_concurrency()
+        self.inner().children.max_concurrency()
     }
 
     fn io_mut(&mut self) -> &mut Self::Io {
-        &mut self.io
+        &mut self.inner_mut().io
+    }
+
+    async fn blocking<F, R>(&mut self, f: F) -> Result<R, ContextError>
+    where
+        F: for<'a> FnOnce(&'a mut Self) -> ScopedBoxFuture<'static, 'a, R> + Send + 'static,
+        R: Send + 'static,
+    {
+        let mut ctx = Self {
+            id: self.id.clone(),
+            mux: self.mux.clone(),
+            inner: self.inner.take(),
+            max_concurrency: self.max_concurrency,
+        };
+
+        let (inner, output) = CpuBackend::blocking_async(async move {
+            let output = f(&mut ctx).await;
+            (ctx.inner, output)
+        })
+        .await;
+
+        self.inner = inner;
+
+        Ok(output)
     }
 
     async fn queue<R>(&mut self) -> Result<Self::Queue<'_, R>, ContextError>
@@ -116,14 +183,9 @@ where
         R: Send + 'static,
         Self: Sized,
     {
-        let children = self
-            .children
-            .as_mut()
-            .expect("children were not left uninitialized");
+        self.alloc_max().await?;
 
-        children
-            .alloc(&self.mux, children.max_concurrency())
-            .await?;
+        let children = &mut self.inner_mut().children;
 
         Ok(RRQueue::new(children.as_slice_mut()))
     }
@@ -135,19 +197,19 @@ where
         RA: Send + 'a,
         RB: Send + 'a,
     {
-        // We temporarily take the children to avoid borrowing issues.
-        let mut children = self
-            .children
+        // We temporarily take the state to avoid borrowing issues.
+        let mut inner = self
+            .inner
             .take()
-            .expect("children were not left uninitialized");
+            .expect("context is never left uninitialized");
 
-        if children.len() < 1 {
-            children.alloc(&self.mux, 1).await?;
+        if inner.children.len() < 1 {
+            inner.children.alloc(&self.mux, 1).await?;
         }
 
-        let output = futures::join!(a(self), b(children.first_mut()));
+        let output = futures::join!(a(self), b(inner.children.first_mut()));
 
-        self.children = Some(children);
+        self.inner = Some(inner);
 
         Ok(output)
     }
@@ -164,19 +226,19 @@ where
         RB: Send + 'a,
         E: Send + 'a,
     {
-        // We temporarily take the children to avoid borrowing issues.
-        let mut children = self
-            .children
+        // We temporarily take the state to avoid borrowing issues.
+        let mut inner = self
+            .inner
             .take()
-            .expect("children were not left uninitialized");
+            .expect("context is never left uninitialized");
 
-        if children.len() < 1 {
-            children.alloc(&self.mux, 1).await?;
+        if inner.children.len() < 1 {
+            inner.children.alloc(&self.mux, 1).await?;
         }
 
-        let output = futures::try_join!(a(self), b(children.first_mut()));
+        let output = futures::try_join!(a(self), b(inner.children.first_mut()));
 
-        self.children = Some(children);
+        self.inner = Some(inner);
 
         Ok(output)
     }
@@ -264,7 +326,7 @@ where
 mod tests {
     use std::future::IntoFuture;
 
-    use crate::{join, queue::Queue};
+    use crate::{blocking, join, queue::Queue};
     use serio::{codec::Bincode, stream::IoStreamExt, SinkExt};
     use uid_mux::test_utils::test_yamux_pair_framed;
 
@@ -354,5 +416,36 @@ mod tests {
         let (_, results_b) = futures::try_join!(queue_a.wait(), queue_b.wait()).unwrap();
 
         assert_eq!(results_b, vec![0, 1]);
+    }
+
+    #[tokio::test]
+    async fn test_mt_executor_blocking() {
+        let ((mux_a, fut_a), (mux_b, fut_b)) = test_yamux_pair_framed(1024, Bincode);
+
+        tokio::spawn(async move {
+            futures::try_join!(fut_a.into_future(), fut_b.into_future()).unwrap();
+        });
+
+        let mut exec_a = MTExecutor::new(mux_a, 8);
+        let mut exec_b = MTExecutor::new(mux_b, 8);
+
+        let (mut ctx_a, mut ctx_b) =
+            futures::try_join!(exec_a.new_thread(), exec_b.new_thread()).unwrap();
+
+        let (_, received) = futures::join!(
+            async {
+                blocking!(ctx_a, async { ctx_a.io_mut().send(1u8).await.unwrap() }).unwrap();
+            },
+            async {
+                blocking!(ctx_b, async {
+                    ctx_b.io_mut().expect_next::<u8>().await.unwrap()
+                })
+                .unwrap()
+            }
+        );
+
+        assert_eq!(received, 1u8);
+        assert!(ctx_a.inner.is_some());
+        assert!(ctx_b.inner.is_some());
     }
 }
