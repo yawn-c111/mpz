@@ -21,7 +21,6 @@ thiserror.workspace = true
 serio.workspace = true
 uid-mux.workspace = true
 serde = { workspace = true, features = ["derive"] }
-tokio = { workspace = true, features = ["sync"] }
 pollster.workspace = true
 rayon = { workspace = true, optional = true }
 cfg-if.workspace = true
