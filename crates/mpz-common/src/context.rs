@@ -184,7 +184,7 @@ pub trait Context: Send + Sync {
 #[macro_export]
 macro_rules! blocking {
     ($ctx:ident, ($($arg:ident),+) => $task:expr) => {
-        blocking!(
+        $crate::blocking!(
             $ctx,
             async {
                 let output = $task.await;
