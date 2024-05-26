@@ -6,7 +6,7 @@ edition = "2021"
 [features]
 default = ["sync"]
 sync = []
-test-utils = ["uid-mux/test-utils"]
+test-utils = ["uid-mux/test-utils", "uid-mux/serio"]
 ideal = []
 rayon = ["dep:rayon"]
 force-st = []

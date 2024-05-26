@@ -11,9 +11,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let rt = tokio::runtime::Runtime::new().unwrap();
     group.bench_function("aes", |b| {
         b.to_async(&rt).iter(|| async {
-            let ((mut leader_exec, mut follower_exec), io_fut) = test_mt_executor(1 * 1024 * 1024);
-
-            rt.spawn(async move { io_fut.await.unwrap() });
+            let (mut leader_exec, mut follower_exec) = test_mt_executor(8);
 
             let (leader_ot_send, follower_ot_recv) = ideal_ot();
             let (follower_ot_send, leader_ot_recv) = ideal_ot();

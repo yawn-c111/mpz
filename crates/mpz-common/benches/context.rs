@@ -26,7 +26,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     // Measures the overhead of making a `Context::blocking` call, which
     // moves the context to a worker thread and back.
     group.bench_function("mt/blocking", |b| {
-        let ((mut exec_a, mut exec_b), fut) = test_mt_executor(1024);
+        let (mut exec_a, mut exec_b) = test_mt_executor(128);
 
         let mut ctx = block_on(async {
             futures::select! {

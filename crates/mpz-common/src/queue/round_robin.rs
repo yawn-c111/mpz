@@ -88,9 +88,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_rr_queue() {
-        let ((mut exec_a, _), io_fut) = test_mt_executor(1024);
-
-        tokio::spawn(io_fut);
+        let (mut exec_a, _) = test_mt_executor(1024);
 
         let mut ctx = vec![
             exec_a.new_thread().await.unwrap(),

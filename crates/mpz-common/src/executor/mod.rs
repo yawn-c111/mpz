@@ -10,16 +10,13 @@ pub use st::STExecutor;
 
 #[cfg(any(test, feature = "test-utils"))]
 mod test_utils {
-    use std::future::IntoFuture;
-
-    use futures::{Future, TryFutureExt};
     use serio::{
         channel::{duplex, MemoryDuplex},
         codec::Bincode,
     };
     use uid_mux::{
-        test_utils::test_yamux_pair_framed,
-        yamux::{ConnectionError, YamuxCtrl},
+        test_utils::{test_framed_mux, TestFramedMux},
+        yamux::YamuxCtrl,
         FramedMux,
     };
 
@@ -37,22 +34,13 @@ mod test_utils {
     /// Test multi-threaded executor.
     pub type TestMTExecutor = MTExecutor<FramedMux<YamuxCtrl, Bincode>>;
 
-    /// Creates a pair of multi-threaded executors with yamux I/O channels.
+    /// Creates a pair of multi-threaded executors with memory I/O channels.
     pub fn test_mt_executor(
         io_buffer: usize,
-    ) -> (
-        (TestMTExecutor, TestMTExecutor),
-        impl Future<Output = Result<(), ConnectionError>>,
-    ) {
-        let ((mux_0, fut_0), (mux_1, fut_1)) = test_yamux_pair_framed(io_buffer, Bincode);
+    ) -> (MTExecutor<TestFramedMux>, MTExecutor<TestFramedMux>) {
+        let (mux_0, mux_1) = test_framed_mux(io_buffer);
 
-        let fut_io =
-            futures::future::try_join(fut_0.into_future(), fut_1.into_future()).map_ok(|_| ());
-
-        let exec_0 = MTExecutor::new(mux_0, 8);
-        let exec_1 = MTExecutor::new(mux_1, 8);
-
-        ((exec_0, exec_1), fut_io)
+        (MTExecutor::new(mux_0, 8), MTExecutor::new(mux_1, 8))
     }
 }
 
