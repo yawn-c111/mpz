@@ -203,11 +203,13 @@ where
             .take()
             .expect("context is never left uninitialized");
 
-        if inner.children.len() < 1 {
-            inner.children.alloc(&self.mux, 1).await?;
+        if inner.children.len() < 2 {
+            inner.children.alloc(&self.mux, 2).await?;
         }
 
-        let output = futures::join!(a(self), b(inner.children.first_mut()));
+        let (ctx_a, ctx_b) = inner.children.pair_mut();
+
+        let output = futures::join!(a(ctx_a), b(ctx_b));
 
         self.inner = Some(inner);
 
@@ -232,11 +234,13 @@ where
             .take()
             .expect("context is never left uninitialized");
 
-        if inner.children.len() < 1 {
-            inner.children.alloc(&self.mux, 1).await?;
+        if inner.children.len() < 2 {
+            inner.children.alloc(&self.mux, 2).await?;
         }
 
-        let output = futures::try_join!(a(self), b(inner.children.first_mut()));
+        let (ctx_a, ctx_b) = inner.children.pair_mut();
+
+        let output = futures::try_join!(a(ctx_a), b(ctx_b));
 
         self.inner = Some(inner);
 
@@ -311,10 +315,13 @@ where
         Ok(())
     }
 
-    fn first_mut(&mut self) -> &mut MTContext<M, Io> {
-        self.slots
-            .first_mut()
-            .expect("number of threads were checked")
+    fn pair_mut(&mut self) -> (&mut MTContext<M, Io>, &mut MTContext<M, Io>) {
+        let [a, b] = self
+            .slots
+            .first_chunk_mut::<2>()
+            .expect("number of threads were checked");
+
+        (a, b)
     }
 
     fn as_slice_mut(&mut self) -> &mut [MTContext<M, Io>] {
