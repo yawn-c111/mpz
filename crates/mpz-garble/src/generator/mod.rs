@@ -13,7 +13,7 @@ use mpz_circuits::{
     types::{Value, ValueType},
     Circuit,
 };
-use mpz_common::{blocking, Context};
+use mpz_common::{blocking, try_join, Context};
 use mpz_core::hash::Hash;
 use mpz_garble_core::{
     encoding_state, ChaChaEncoder, EncodedValue, Encoder, EncodingCommitment,
@@ -143,7 +143,7 @@ impl Generator {
     /// - `values` - The assigned values
     /// - `sink` - The sink to send the encodings to the evaluator
     /// - `ot` - The OT sender
-    pub async fn setup_assigned_values<Ctx: Context, OT: OTSendEncoding<Ctx>>(
+    pub async fn setup_assigned_values<Ctx: Context, OT: OTSendEncoding<Ctx> + Send>(
         &self,
         ctx: &mut Ctx,
         values: &AssignedValues,
@@ -153,10 +153,11 @@ impl Generator {
         let mut direct_send_values = values.public.clone();
         direct_send_values.extend(values.private.iter().cloned());
 
-        self.direct_send_active_encodings(ctx, &direct_send_values)
-            .await?;
-        self.ot_send_active_encodings(ctx, &ot_send_values, ot)
-            .await?;
+        try_join!(
+            ctx,
+            self.direct_send_active_encodings(ctx, &direct_send_values),
+            self.ot_send_active_encodings(ctx, &ot_send_values, ot)
+        )??;
 
         Ok(())
     }
@@ -178,11 +179,6 @@ impl Generator {
         if values.is_empty() {
             return Ok(());
         }
-
-        tracing::trace!(
-            "values: {:?}",
-            values.iter().map(|(id, _)| id).collect::<Vec<_>>()
-        );
 
         let full_encodings = {
             let mut state = self.state();
@@ -219,11 +215,6 @@ impl Generator {
         if values.is_empty() {
             return Ok(());
         }
-
-        tracing::trace!(
-            "values: {:?}",
-            values.iter().map(|(id, _)| id).collect::<Vec<_>>()
-        );
 
         let active_encodings = {
             let mut state = self.state();
@@ -306,8 +297,6 @@ impl Generator {
             (delta, inputs)
         };
 
-        tracing::debug!("gen: {:?}", &inputs);
-
         // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
         let span = span!(Level::TRACE, "worker");
         let GeneratorOutput {
@@ -332,8 +321,6 @@ impl Generator {
                 gen_iter.finish().map_err(GeneratorError::from)
             }
         }??;
-
-        tracing::debug!("gen: {:?}", &encoded_outputs);
 
         if self.config.encoding_commitments {
             let commitments: Vec<EncodingCommitment> = encoded_outputs

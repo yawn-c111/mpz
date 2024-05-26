@@ -148,6 +148,7 @@ impl DEAP {
     /// * `outputs` - The outputs of the circuit.
     /// * `sink` - The sink to send messages to.
     /// * `stream` - The stream to receive messages from.
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn load<Ctx: Context>(
         &self,
         ctx: &mut Ctx,
@@ -291,6 +292,7 @@ impl DEAP {
     /// * `stream` - The stream to receive messages from.
     /// * `ot_recv` - The OT receiver.
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn execute_prove<Ctx, OTR>(
         &self,
         ctx: &mut Ctx,
@@ -301,7 +303,7 @@ impl DEAP {
     ) -> Result<(), DEAPError>
     where
         Ctx: Context,
-        OTR: OTReceiveEncoding<Ctx>,
+        OTR: OTReceiveEncoding<Ctx> + Send,
     {
         if matches!(self.role, Role::Follower) {
             return Err(DEAPError::RoleError(
@@ -341,6 +343,7 @@ impl DEAP {
     /// * `sink` - The sink to send messages to.
     /// * `ot_send` - The OT sender.
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn execute_verify<Ctx, OTS>(
         &self,
         ctx: &mut Ctx,
@@ -377,6 +380,7 @@ impl DEAP {
     }
 
     /// Sends a commitment to the provided values, proving them to the follower upon finalization.
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn defer_prove<Ctx>(
         &self,
         ctx: &mut Ctx,
@@ -413,6 +417,7 @@ impl DEAP {
     /// * `values` - The values to receive a commitment to
     /// * `expected_values` - The expected values which will be verified against the commitment
     /// * `stream` - The stream to receive messages from
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn defer_verify<Ctx>(
         &self,
         ctx: &mut Ctx,
@@ -459,6 +464,7 @@ impl DEAP {
     /// * `values` - The values to decode
     /// * `sink` - The sink to send messages to.
     /// * `stream` - The stream to receive messages from.
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn decode<Ctx>(
         &self,
         ctx: &mut Ctx,
@@ -559,6 +565,7 @@ impl DEAP {
         Ok(output)
     }
 
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub(crate) async fn decode_private<Ctx, OTS, OTR>(
         &self,
         ctx: &mut Ctx,
@@ -613,6 +620,7 @@ impl DEAP {
             .collect())
     }
 
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub(crate) async fn decode_blind<Ctx, OTS, OTR>(
         &self,
         ctx: &mut Ctx,
@@ -660,6 +668,7 @@ impl DEAP {
         Ok(())
     }
 
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub(crate) async fn decode_shared<Ctx, OTS, OTR>(
         &self,
         ctx: &mut Ctx,
@@ -762,6 +771,7 @@ impl DEAP {
     ///
     /// - `channel` - The channel to communicate with the other party
     /// - `ot` - The OT verifier to use
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn finalize<Ctx, OT>(
         &mut self,
         ctx: &mut Ctx,

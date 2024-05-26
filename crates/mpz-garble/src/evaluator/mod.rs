@@ -14,16 +14,15 @@ use mpz_circuits::{
     types::{TypeError, Value, ValueType},
     Circuit,
 };
-use mpz_common::{blocking, cpu::CpuBackend, executor::DummyExecutor, Context};
+use mpz_common::{blocking, cpu::CpuBackend, executor::DummyExecutor, try_join, Context};
 use mpz_core::hash::Hash;
 use mpz_garble_core::{
-    encoding_state, msg::Status, Decoding, EncodedValue, EncodingCommitment, EncryptedGate,
-    EncryptedGateBatch, Evaluator as EvaluatorCore, EvaluatorOutput, GarbledCircuit,
+    encoding_state, Decoding, EncodedValue, EncodingCommitment, EncryptedGateBatch,
+    Evaluator as EvaluatorCore, EvaluatorOutput, GarbledCircuit,
 };
 use mpz_ot::TransferId;
-use serio::{stream::IoStreamExt, StreamExt};
+use serio::stream::IoStreamExt;
 use utils::iter::FilterDrain;
-use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use crate::{
     memory::EncodingMemory,
@@ -142,7 +141,7 @@ impl Evaluator {
     /// - `values` - The assigned values
     /// - `stream` - The stream to receive the encodings from the generator
     /// - `ot` - The OT receiver
-    pub async fn setup_assigned_values<Ctx: Context, OT: OTReceiveEncoding<Ctx>>(
+    pub async fn setup_assigned_values<Ctx: Context, OT: OTReceiveEncoding<Ctx> + Send>(
         &self,
         ctx: &mut Ctx,
         values: &AssignedValues,
@@ -171,10 +170,11 @@ impl Evaluator {
         ot_recv_values.sort_by(|(id1, _), (id2, _)| id1.cmp(id2));
         direct_recv_values.sort_by(|(id1, _), (id2, _)| id1.cmp(id2));
 
-        self.direct_receive_active_encodings(ctx, &direct_recv_values)
-            .await?;
-        self.ot_receive_active_encodings(ctx, &ot_recv_values, ot)
-            .await?;
+        try_join!(
+            ctx,
+            self.direct_receive_active_encodings(ctx, &direct_recv_values),
+            self.ot_receive_active_encodings(ctx, &ot_recv_values, ot)
+        )??;
 
         Ok(())
     }
@@ -198,8 +198,6 @@ impl Evaluator {
 
         let (ot_recv_ids, ot_recv_values): (Vec<ValueId>, Vec<Value>) =
             values.iter().cloned().unzip();
-
-        tracing::trace!("values: {:?}", &ot_recv_ids);
 
         let EncodingReceiverOutput {
             id,
@@ -253,11 +251,6 @@ impl Evaluator {
             return Ok(());
         }
 
-        tracing::trace!(
-            "values: {:?}",
-            values.iter().map(|(id, _)| id).collect::<Vec<_>>()
-        );
-
         let active_encodings: Vec<EncodedValue<encoding_state::Active>> =
             ctx.io_mut().expect_next().await?;
 
@@ -296,6 +289,7 @@ impl Evaluator {
     /// * `inputs` - The inputs to the circuit
     /// * `outputs` - The outputs from the circuit
     /// * `stream` - The stream from the generator
+    #[tracing::instrument(fields(thread = %ctx.id()), skip_all)]
     pub async fn receive_garbled_circuit<Ctx: Context>(
         &self,
         ctx: &mut Ctx,

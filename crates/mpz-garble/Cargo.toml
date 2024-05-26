@@ -11,6 +11,7 @@ name = "mpz_garble"
 
 [features]
 default = ["mock"]
+rayon = ["mpz-common/rayon"]
 mock = ["mpz-ot/ideal"]
 
 [dependencies]
@@ -33,7 +34,6 @@ rand_core.workspace = true
 rand_chacha = { workspace = true }
 thiserror.workspace = true
 aes = { workspace = true }
-rayon = { workspace = true }
 derive_builder.workspace = true
 itybity.workspace = true
 tracing.workspace = true
