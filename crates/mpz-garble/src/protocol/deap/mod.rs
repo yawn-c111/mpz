@@ -157,15 +157,30 @@ impl DEAP {
     ) -> Result<(), DEAPError> {
         // Generate and receive concurrently.
         // Drop the encoded outputs, we don't need them here
-        _ = try_join!(
-            ctx,
-            self.gen
-                .generate(ctx, circ.clone(), inputs, outputs, false)
-                .map_err(DEAPError::from),
-            self.ev
-                .receive_garbled_circuit(ctx, circ.clone(), inputs, outputs)
-                .map_err(DEAPError::from)
-        )??;
+        match self.role {
+            Role::Leader => {
+                try_join!(
+                    ctx,
+                    self.gen
+                        .generate(ctx, circ.clone(), inputs, outputs, false)
+                        .map_err(DEAPError::from),
+                    self.ev
+                        .receive_garbled_circuit(ctx, circ.clone(), inputs, outputs)
+                        .map_err(DEAPError::from)
+                )??;
+            }
+            Role::Follower => {
+                try_join!(
+                    ctx,
+                    self.ev
+                        .receive_garbled_circuit(ctx, circ.clone(), inputs, outputs)
+                        .map_err(DEAPError::from),
+                    self.gen
+                        .generate(ctx, circ.clone(), inputs, outputs, false)
+                        .map_err(DEAPError::from)
+                )??;
+            }
+        }
 
         Ok(())
     }
@@ -183,6 +198,7 @@ impl DEAP {
     /// * `ot_send` - The OT sender.
     /// * `ot_recv` - The OT receiver.
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()), skip_all)]
     pub async fn execute<Ctx, OTS, OTR>(
         &self,
         ctx: &mut Ctx,
@@ -1111,6 +1127,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_deap_decode_private() {
+        tracing_subscriber::fmt::init();
         let (mut ctx_a, mut ctx_b) = test_st_executor(8);
         let (mut leader_ot_send, mut follower_ot_recv) = ideal_ot();
         let (mut follower_ot_send, mut leader_ot_recv) = ideal_ot();
@@ -1181,8 +1198,7 @@ mod tests {
                         &mut follower_ot_send,
                         &mut follower_ot_recv,
                     )
-                    .await
-                    .unwrap();
+                    .await?;
 
                 follower
                     .decode_blind(
@@ -1191,13 +1207,11 @@ mod tests {
                         &mut follower_ot_send,
                         &mut follower_ot_recv,
                     )
-                    .await
-                    .unwrap();
+                    .await?;
 
-                follower
-                    .finalize(&mut ctx_b, &mut follower_ot_recv)
-                    .await
-                    .unwrap();
+                follower.finalize(&mut ctx_b, &mut follower_ot_recv).await?;
+
+                Ok::<_, DEAPError>(())
             }
         };
 

@@ -12,6 +12,20 @@ impl Default for ThreadId {
     }
 }
 
+impl fmt::Display for ThreadId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for id in self.0[..self.0.len() - 1].iter() {
+            write!(f, "{}/", id)?;
+        }
+
+        if let Some(last) = self.0.last() {
+            write!(f, "{}", last)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl ThreadId {
     /// Creates a new thread ID with the provided ID.
     #[inline]

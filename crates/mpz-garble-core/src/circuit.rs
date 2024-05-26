@@ -51,6 +51,11 @@ impl<const N: usize> EncryptedGateBatch<N> {
         Self(batch)
     }
 
+    /// Returns the length of the batch.
+    pub const fn len(&self) -> usize {
+        N
+    }
+
     /// Returns the inner array.
     pub fn into_array(self) -> [EncryptedGate; N] {
         self.0

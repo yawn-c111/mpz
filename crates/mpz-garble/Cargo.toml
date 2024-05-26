@@ -36,6 +36,7 @@ aes = { workspace = true }
 rayon = { workspace = true }
 derive_builder.workspace = true
 itybity.workspace = true
+tracing.workspace = true
 opaque-debug.workspace = true
 
 [dev-dependencies]
@@ -51,6 +52,7 @@ tokio = { workspace = true, features = [
     "rt-multi-thread",
 ] }
 async_executors = { version = "0.6", features = ["notwasm", "tokio_tp"] }
+tracing-subscriber = { workspace = true, features = ["fmt"] }
 
 [[bench]]
 name = "deap"

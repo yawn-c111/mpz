@@ -13,13 +13,14 @@ use mpz_circuits::{
     types::{Value, ValueType},
     Circuit,
 };
-use mpz_common::Context;
+use mpz_common::{blocking, Context};
 use mpz_core::hash::Hash;
 use mpz_garble_core::{
-    encoding_state, ChaChaEncoder, EncodedValue, Encoder, Generator as GeneratorCore,
+    encoding_state, ChaChaEncoder, EncodedValue, Encoder, EncodingCommitment,
+    Generator as GeneratorCore, GeneratorOutput,
 };
 use serio::SinkExt;
-use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
+use tracing::{span, Level};
 
 use crate::{
     memory::EncodingMemory,
@@ -167,6 +168,7 @@ impl Generator {
     /// - `id` - The ID of this operation
     /// - `values` - The values to send
     /// - `ot` - The OT sender
+    #[tracing::instrument(fields(thread = %ctx.id()), skip_all)]
     pub(crate) async fn ot_send_active_encodings<Ctx: Context, OT: OTSendEncoding<Ctx>>(
         &self,
         ctx: &mut Ctx,
@@ -176,6 +178,11 @@ impl Generator {
         if values.is_empty() {
             return Ok(());
         }
+
+        tracing::trace!(
+            "values: {:?}",
+            values.iter().map(|(id, _)| id).collect::<Vec<_>>()
+        );
 
         let full_encodings = {
             let mut state = self.state();
@@ -203,6 +210,7 @@ impl Generator {
     ///
     /// - `values` - The values to send
     /// - `sink` - The sink to send the encodings to the evaluator
+    #[tracing::instrument(fields(thread = %ctx.id()), skip_all)]
     pub(crate) async fn direct_send_active_encodings<Ctx: Context>(
         &self,
         ctx: &mut Ctx,
@@ -211,6 +219,11 @@ impl Generator {
         if values.is_empty() {
             return Ok(());
         }
+
+        tracing::trace!(
+            "values: {:?}",
+            values.iter().map(|(id, _)| id).collect::<Vec<_>>()
+        );
 
         let active_encodings = {
             let mut state = self.state();
@@ -246,6 +259,7 @@ impl Generator {
     /// * `outputs` - The outputs of the circuit
     /// * `sink` - The sink to send the garbled circuit to the evaluator
     /// * `hash` - Whether to hash the circuit
+    #[tracing::instrument(fields(thread = %ctx.id()), skip_all)]
     pub async fn generate<Ctx: Context>(
         &self,
         ctx: &mut Ctx,
@@ -258,6 +272,7 @@ impl Generator {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
         };
+
         let (delta, inputs) = {
             let state = self.state();
 
@@ -291,39 +306,44 @@ impl Generator {
             (delta, inputs)
         };
 
-        let mut gen = if hash {
-            GeneratorCore::new_with_hasher(circ.clone(), delta, &inputs)?
-        } else {
-            GeneratorCore::new(circ.clone(), delta, &inputs)?
-        };
+        tracing::debug!("gen: {:?}", &inputs);
 
-        let mut batch: Vec<_>;
-        let batch_size = self.config.batch_size;
-        while !gen.is_complete() {
-            // Move the generator to another thread to produce the next batch
-            // then send it back
-            (gen, batch) = Backend::spawn(move || {
-                let batch = gen.by_ref().take(batch_size).collect();
-                (gen, batch)
-            })
-            .await;
+        // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
+        let span = span!(Level::TRACE, "worker");
+        let GeneratorOutput {
+            outputs: encoded_outputs,
+            hash,
+        } = blocking! {
+            ctx,
+            async move {
+                let _enter = span.enter();
+                let mut gen = GeneratorCore::default();
+                let mut gen_iter = gen.generate_batched(&circ, delta, inputs)?;
+                let io = ctx.io_mut();
 
-            if !batch.is_empty() {
-                ctx.io_mut().send(batch).await?;
+                if hash {
+                    gen_iter.enable_hasher();
+                }
+
+                while let Some(batch) = gen_iter.by_ref().next() {
+                    io.feed(batch).await?;
+                }
+
+                gen_iter.finish().map_err(GeneratorError::from)
             }
-        }
+        }??;
 
-        let encoded_outputs = gen.outputs()?;
-        let hash = gen.hash();
+        tracing::debug!("gen: {:?}", &encoded_outputs);
 
         if self.config.encoding_commitments {
-            let commitments: Vec<_> = encoded_outputs
+            let commitments: Vec<EncodingCommitment> = encoded_outputs
                 .iter()
                 .map(|output| output.commit())
                 .collect();
-
-            ctx.io_mut().send(commitments).await?;
+            ctx.io_mut().feed(commitments).await?;
         }
+
+        ctx.io_mut().flush().await?;
 
         // Add the outputs to the memory and set as active.
         let mut state = self.state();
