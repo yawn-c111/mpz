@@ -13,13 +13,13 @@ env:
 
 jobs:
   build_and_test:
-    if: ( ! github.event.pull_request.draft )
+    name: "Build and Test"
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Stable
+      - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -44,7 +44,8 @@ jobs:
 
   miri:
     if: ( ! github.event.pull_request.draft )
-    name: "Miri"
+    name: "Test with Miri"
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,10 +70,11 @@ jobs:
   rustfmt_and_clippy:
     name: Rustfmt and Clippy
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Nightly with rustfmt and clipy
+      - name: Install Rust Nightly with rustfmt and clippy
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
