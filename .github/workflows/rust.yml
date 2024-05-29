@@ -79,6 +79,9 @@ jobs:
       
       - uses: Swatinem/rust-cache@v2.7.3
 
+      - name: Cargo version
+        run: cargo version --verbose
+
       - name: Cargo update
         run: cargo update
       
