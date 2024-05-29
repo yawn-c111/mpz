@@ -66,8 +66,10 @@ jobs:
   miri:
     if: ( ! github.event.pull_request.draft )
     name: "Test with Miri"
-
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
     steps:
       - uses: actions/checkout@v4
 
@@ -76,18 +78,15 @@ jobs:
         with:
           toolchain: nightly
           components: miri
-          targets: x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu
+          targets: ${{ matrix.target }}
       
       - uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Cargo version
-        run: cargo version --verbose
+      - name: Build
+        run: |
+          cargo version --verbose
+          cargo update
+          cargo build --target ${{ matrix.target }}
 
-      - name: Cargo update
-        run: cargo update
-      
-      - name: Test with Miri on x86_64
-        run: cargo miri test -p clmul -p matrix-transpose --target x86_64-unknown-linux-gnu
-      
-      - name: Test with Miri on aarch64
-        run: cargo miri test -p clmul -p matrix-transpose --target aarch64-unknown-linux-gnu
+      - name: Test with Miri on ${{ matrix.target }}
+        run: cargo miri test -p clmul -p matrix-transpose --target ${{ matrix.target }}
