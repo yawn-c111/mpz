@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Stable
+      - name: Install Rust nightly with Miri
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
