@@ -26,9 +26,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Cargo update
-        run: cargo update
-
       - name: "Build"
         run: cargo build
 
@@ -78,15 +75,10 @@ jobs:
         with:
           toolchain: nightly
           components: miri
-          targets: ${{ matrix.target }}
       
       - uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Build
+      - name: Test with Miri on ${{ matrix.target }}
         run: |
           cargo version --verbose
-          cargo update
-          cargo build --target ${{ matrix.target }}
-
-      - name: Test with Miri on ${{ matrix.target }}
-        run: cargo miri test -p clmul -p matrix-transpose --target ${{ matrix.target }}
+          cargo miri test -p clmul -p matrix-transpose --target ${{ matrix.target }}
