@@ -11,14 +11,14 @@ use std::marker::PhantomData;
 #[derive(Debug)]
 pub struct ShareConversionReceiver<T, F> {
     ole_receiver: T,
-    phantom: PhantomData<F>,
+    _pd: PhantomData<F>,
 }
 
 impl<T: Clone, F> Clone for ShareConversionReceiver<T, F> {
     fn clone(&self) -> Self {
         Self {
             ole_receiver: self.ole_receiver.clone(),
-            phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
@@ -28,7 +28,7 @@ impl<T, F> ShareConversionReceiver<T, F> {
     pub fn new(ole_receiver: T) -> Self {
         Self {
             ole_receiver,
-            phantom: PhantomData,
+            _pd: PhantomData,
         }
     }
 }
