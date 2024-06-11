@@ -40,7 +40,7 @@ pub trait Allocate {
 #[async_trait]
 pub trait Preprocess<Ctx>: Allocate {
     /// Error type.
-    type Error;
+    type Error: std::error::Error + Send + Sync + 'static;
 
     /// Preprocesses the functionality.
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), Self::Error>;
