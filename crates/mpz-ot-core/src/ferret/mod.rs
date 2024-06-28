@@ -36,11 +36,12 @@ pub const LPN_PARAMETERS_UNIFORM: LpnParameters = LpnParameters {
 };
 
 /// The type of Lpn parameters.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum LpnType {
     /// Uniform error distribution.
     Uniform,
     /// Regular error distribution.
+    #[default]
     Regular,
 }
 
@@ -48,7 +49,6 @@ pub enum LpnType {
 mod tests {
     use super::*;
 
-    use msgs::LpnMatrixSeed;
     use receiver::Receiver;
     use sender::Sender;
 
@@ -56,7 +56,6 @@ mod tests {
     use crate::test::assert_cot;
     use crate::{MPCOTReceiverOutput, MPCOTSenderOutput, RCOTReceiverOutput, RCOTSenderOutput};
     use mpz_core::{lpn::LpnParameters, prg::Prg};
-    use rand::SeedableRng;
 
     const LPN_PARAMETERS_TEST: LpnParameters = LpnParameters {
         n: 9600,
@@ -66,7 +65,7 @@ mod tests {
 
     #[test]
     fn ferret_test() {
-        let mut prg = Prg::from_seed([1u8; 16].into());
+        let mut prg = Prg::new();
         let delta = prg.random_block();
         let mut ideal_cot = IdealCOT::default();
         let mut ideal_mpcot = IdealMpcot::default();
@@ -101,18 +100,8 @@ mod tests {
             )
             .unwrap();
 
-        let LpnMatrixSeed {
-            seed: lpn_matrix_seed,
-        } = seed;
-
         let mut sender = sender
-            .setup(
-                delta,
-                LPN_PARAMETERS_TEST,
-                LpnType::Regular,
-                lpn_matrix_seed,
-                &v,
-            )
+            .setup(delta, LPN_PARAMETERS_TEST, LpnType::Regular, seed, &v)
             .unwrap();
 
         // extend once

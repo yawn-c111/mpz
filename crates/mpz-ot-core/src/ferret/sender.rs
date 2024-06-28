@@ -4,7 +4,12 @@ use mpz_core::{
     Block,
 };
 
-use crate::ferret::{error::SenderError, LpnType};
+use crate::{
+    ferret::{error::SenderError, LpnType},
+    TransferId,
+};
+
+use super::msgs::LpnMatrixSeed;
 
 /// Ferret sender.
 #[derive(Debug, Default)]
@@ -36,7 +41,7 @@ impl Sender {
         delta: Block,
         lpn_parameters: LpnParameters,
         lpn_type: LpnType,
-        seed: Block,
+        seed: LpnMatrixSeed,
         v: &[Block],
     ) -> Result<Sender<state::Extension>, SenderError> {
         if v.len() != lpn_parameters.k {
@@ -44,6 +49,7 @@ impl Sender {
                 "the length of v should be equal to k".to_string(),
             ));
         }
+        let LpnMatrixSeed { seed } = seed;
         let lpn_encoder = LpnEncoder::<10>::new(seed, lpn_parameters.k as u32);
 
         Ok(Sender {
@@ -54,6 +60,7 @@ impl Sender {
                 lpn_type,
                 lpn_encoder,
                 v: v.to_vec(),
+                id: TransferId::default(),
             },
         })
     }
@@ -63,6 +70,7 @@ impl Sender<state::Extension> {
     /// Outputs the information for MPCOT.
     ///
     /// See step 3 and 4.
+    #[inline]
     pub fn get_mpcot_query(&self) -> (u32, u32) {
         (
             self.state.lpn_parameters.t as u32,
@@ -83,6 +91,8 @@ impl Sender<state::Extension> {
             return Err(SenderError("the length of s should be n".to_string()));
         }
 
+        self.state.id.next();
+
         // Compute y = A * v + s
         let mut y = s.to_vec();
         self.state.lpn_encoder.compute(&mut y, &self.state.v);
@@ -97,10 +107,17 @@ impl Sender<state::Extension> {
 
         Ok(y_)
     }
+
+    /// Returns id
+    pub fn id(&self) -> TransferId {
+        self.state.id
+    }
 }
 
 /// The sender's state.
 pub mod state {
+    use crate::TransferId;
+
     use super::*;
 
     mod sealed {
@@ -141,6 +158,9 @@ pub mod state {
 
         /// Sender's COT message in the setup phase.
         pub(super) v: Vec<Block>,
+
+        /// TransferID.
+        pub(crate) id: TransferId,
     }
 
     impl State for Extension {}
