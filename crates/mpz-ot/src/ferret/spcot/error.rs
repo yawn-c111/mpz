@@ -2,7 +2,7 @@ use crate::OTError;
 
 /// A SPCOT sender error.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[allow(missing_docs, clippy::enum_variant_names)]
 pub enum SenderError {
     #[error(transparent)]
     IOError(#[from] std::io::Error),
@@ -31,7 +31,7 @@ impl From<crate::ferret::spcot::sender::StateError> for SenderError {
 
 /// A SPCOT receiver error.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+#[allow(missing_docs, clippy::enum_variant_names)]
 pub enum ReceiverError {
     #[error(transparent)]
     IOError(#[from] std::io::Error),
