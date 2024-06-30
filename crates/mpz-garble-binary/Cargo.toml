@@ -1,0 +1,12 @@
+[package]
+name = "mpz-garble-binary"
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[dependencies]
+mpz-core.workspace = true
+
+rand.workspace = true

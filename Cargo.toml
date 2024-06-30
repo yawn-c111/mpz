@@ -11,6 +11,7 @@ members = [
     "crates/mpz-ot-core",
     "crates/mpz-garble",
     "crates/mpz-garble-core",
+    "crates/mpz-garble-binary",
     "crates/mpz-share-conversion-core",
     "crates/mpz-share-conversion",
     "crates/matrix-transpose",
