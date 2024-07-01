@@ -17,6 +17,8 @@ members = [
     "crates/clmul",
     "crates/mpz-ole-core",
     "crates/mpz-ole",
+    "crates/mpz-zk-core",
+    "crates/mpz-zk",
 ]
 resolver = "2"
 
@@ -43,6 +45,8 @@ mpz-ole = { path = "crates/mpz-ole" }
 mpz-ole-core = { path = "crates/mpz-ole-core" }
 clmul = { path = "crates/clmul" }
 matrix-transpose = { path = "crates/matrix-transpose" }
+mpz-zk-core = { path = "crates/mpz-zk-core" }
+mpz-zk = { path = "crates/mpz-zk" }
 
 tlsn-utils = { git = "https://github.com/tlsnotary/tlsn-utils", rev = "6e0be94" }
 tlsn-utils-aio = { git = "https://github.com/tlsnotary/tlsn-utils", rev = "6e0be94" }
