@@ -8,6 +8,7 @@ pub mod commit;
 pub mod ggm_tree;
 pub mod hash;
 pub mod lpn;
+pub mod lpn_estimator;
 pub mod prg;
 pub mod prp;
 pub mod serialize;
@@ -15,6 +16,7 @@ pub mod tkprp;
 pub mod utils;
 
 pub use block::{Block, BlockSerialize};
+pub use lpn_estimator::*;
 
 /// A protocol with a message type.
 pub trait ProtocolMessage {
