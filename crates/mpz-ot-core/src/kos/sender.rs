@@ -9,7 +9,6 @@ use crate::{
 };
 
 use cipher::{KeyIvInit, StreamCipher};
-use itybity::ToBits;
 use mpz_core::{aes::FIXED_KEY_AES, Block};
 
 use rand::{Rng as _, SeedableRng};

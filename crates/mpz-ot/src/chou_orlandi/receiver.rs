@@ -4,14 +4,14 @@ use itybity::BitIterable;
 use mpz_cointoss as cointoss;
 use mpz_common::Context;
 use mpz_core::Block;
-use mpz_ot_core::chou_orlandi::msgs::SenderPayload;
 use mpz_ot_core::chou_orlandi::{
-    receiver_state as state, Receiver as ReceiverCore, ReceiverConfig,
+    msgs::SenderPayload, receiver_state as state, Receiver as ReceiverCore, ReceiverConfig,
 };
 
 use enum_try_as_inner::EnumTryAsInner;
 use rand::{thread_rng, Rng};
 use serio::{stream::IoStreamExt as _, SinkExt as _};
+use tracing::instrument;
 use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use crate::{CommittedOTReceiver, OTError, OTReceiver, OTReceiverOutput, OTSetup};
@@ -81,6 +81,7 @@ impl Receiver {
 
 #[async_trait]
 impl<Ctx: Context> OTSetup<Ctx> for Receiver {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn setup(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         if self.state.is_setup() {
             return Ok(());
@@ -137,6 +138,7 @@ where
     Ctx: Context,
     T: BitIterable + Send + Sync + Clone + 'static,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn receive(
         &mut self,
         ctx: &mut Ctx,
@@ -174,6 +176,7 @@ where
 
 #[async_trait]
 impl<Ctx: Context> CommittedOTReceiver<Ctx, bool, Block> for Receiver {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn reveal_choices(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         let receiver = std::mem::replace(&mut self.state, State::Error)
             .try_into_setup()

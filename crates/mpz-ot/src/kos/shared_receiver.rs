@@ -7,6 +7,7 @@ use mpz_core::Block;
 use mpz_ot_core::{kos::msgs::SenderPayload, OTReceiverOutput, ROTReceiverOutput, TransferId};
 use rand::distributions::{Distribution, Standard};
 use serio::{stream::IoStreamExt, SinkExt};
+use tracing::instrument;
 use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use crate::{
@@ -53,6 +54,7 @@ where
 {
     type Error = OTError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         self.inner.lock(ctx).await?.preprocess(ctx).await
     }
@@ -64,6 +66,7 @@ where
     Ctx: Context,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn receive(
         &mut self,
         ctx: &mut Ctx,
@@ -96,6 +99,7 @@ where
     Standard: Distribution<T>,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn receive_random(
         &mut self,
         ctx: &mut Ctx,
@@ -111,13 +115,15 @@ where
     Ctx: Context,
     BaseOT: VerifiableOTSender<Ctx, bool, [Block; 2]> + Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn accept_reveal(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         self.inner.lock(ctx).await?.accept_reveal(ctx).await
     }
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn verify(
         &mut self,
-        _ctx: &mut Ctx,
+        ctx: &mut Ctx,
         id: TransferId,
         msgs: &[[Block; 2]],
     ) -> Result<(), OTError> {

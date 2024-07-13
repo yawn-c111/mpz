@@ -25,6 +25,7 @@ async-trait.workspace = true
 futures.workspace = true
 rand.workspace = true
 itybity.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = [
@@ -34,4 +35,4 @@ tokio = { workspace = true, features = [
     "rt-multi-thread",
 ] }
 mpz-common = { workspace = true, features = ["test-utils", "ideal"] }
-mpz-ot =  { workspace = true, features = ["ideal"] }
+mpz-ot = { workspace = true, features = ["ideal"] }

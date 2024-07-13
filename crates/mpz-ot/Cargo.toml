@@ -10,7 +10,7 @@ workspace = true
 name = "mpz_ot"
 
 [features]
-default = ["rayon"]
+default = []
 rayon = ["mpz-ot-core/rayon"]
 ideal = ["mpz-common/ideal"]
 
@@ -36,6 +36,7 @@ opaque-debug.workspace = true
 serde = { workspace = true, optional = true }
 serio.workspace = true
 cfg-if.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 mpz-common = { workspace = true, features = ["test-utils", "ideal"] }

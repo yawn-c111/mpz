@@ -11,6 +11,7 @@ use mpz_ole_core::{
 };
 use mpz_ot::{OTError, RandomOTReceiver};
 use serio::{stream::IoStreamExt, Deserialize, Serialize, SinkExt};
+use tracing::instrument;
 
 /// OLE receiver.
 #[derive(Debug)]
@@ -67,6 +68,7 @@ where
 {
     type Error = OLEError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), OLEError> {
         let count = mem::take(&mut self.alloc);
         if count == 0 {
@@ -101,6 +103,7 @@ impl<T: Send, F, Ctx: Context> OLEReceive<Ctx, F> for OLEReceiver<T, F>
 where
     F: Field + Serialize + Deserialize,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn receive(&mut self, ctx: &mut Ctx, b_k: Vec<F>) -> Result<Vec<F>, OLEError> {
         let (receiver_adjust, adjust) = self.adjust(b_k)?;
 

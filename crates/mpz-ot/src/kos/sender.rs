@@ -21,6 +21,7 @@ use rand::{
 };
 use rand_core::SeedableRng;
 use serio::{stream::IoStreamExt as _, SinkExt as _};
+use tracing::instrument;
 use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use crate::{
@@ -81,6 +82,7 @@ impl<BaseOT: Send> Sender<BaseOT> {
     /// * `sink` - The sink to send messages to the base OT sender
     /// * `stream` - The stream to receive messages from the base OT sender
     /// * `delta` - The delta value to use for the base OT setup.
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     pub async fn setup_with_delta<Ctx: Context>(
         &mut self,
         ctx: &mut Ctx,
@@ -129,6 +131,7 @@ impl<BaseOT: Send> Sender<BaseOT> {
     ///
     /// * `channel` - The channel to communicate with the receiver.
     /// * `count` - The number of OTs to extend.
+    #[instrument(level = "debug", fields(thread = %ctx.id(), count), skip_all, err)]
     pub async fn extend<Ctx: Context>(
         &mut self,
         ctx: &mut Ctx,
@@ -218,6 +221,7 @@ where
     Ctx: Context,
     BaseOT: OTSetup<Ctx> + OTReceiver<Ctx, bool, Block> + Send + 'static,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn setup(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         if self.state.is_extension() {
             return Ok(());
@@ -276,6 +280,7 @@ where
 {
     type Error = OTError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         if self.state.is_initialized() {
             self.setup(ctx).await?;
@@ -296,6 +301,7 @@ where
     Ctx: Context,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send(
         &mut self,
         ctx: &mut Ctx,
@@ -332,6 +338,7 @@ where
     Ctx: Context,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send(
         &mut self,
         ctx: &mut Ctx,
@@ -367,9 +374,10 @@ where
     Standard: Distribution<T>,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send_random(
         &mut self,
-        _ctx: &mut Ctx,
+        ctx: &mut Ctx,
         count: usize,
     ) -> Result<ROTSenderOutput<[T; 2]>, OTError> {
         let sender = self
@@ -401,6 +409,7 @@ where
     Ctx: Context,
     BaseOT: CommittedOTReceiver<Ctx, bool, Block> + Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn reveal(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         self.reveal(ctx).await.map_err(OTError::from)
     }

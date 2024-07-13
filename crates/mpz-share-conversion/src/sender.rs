@@ -7,6 +7,7 @@ use mpz_share_conversion_core::{a2m_convert_sender, m2a_convert, msgs::Masks};
 use rand::thread_rng;
 use serio::{Deserialize, Serialize, SinkExt};
 use std::marker::PhantomData;
+use tracing::instrument;
 
 /// Sender for share conversion.
 #[derive(Debug)]
@@ -53,6 +54,7 @@ where
 {
     type Error = ShareConversionError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), ShareConversionError> {
         self.ole_sender
             .preprocess(ctx)
@@ -68,6 +70,7 @@ where
     F: Field + Serialize + Deserialize,
     Ctx: Context,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn to_additive(
         &mut self,
         ctx: &mut Ctx,

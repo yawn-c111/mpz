@@ -6,6 +6,7 @@ use mpz_common::{sync::AsyncMutex, Allocate, Context, Preprocess};
 use mpz_core::Block;
 use rand::distributions::{Distribution, Standard};
 use serio::{stream::IoStreamExt as _, SinkExt as _};
+use tracing::instrument;
 
 use crate::{
     kos::{Sender, SenderError},
@@ -51,6 +52,7 @@ where
 {
     type Error = OTError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         self.inner.lock(ctx).await?.preprocess(ctx).await
     }
@@ -62,6 +64,7 @@ where
     Ctx: Context,
     BaseOT: OTReceiver<Ctx, bool, Block> + Send + 'static,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send(
         &mut self,
         ctx: &mut Ctx,
@@ -91,6 +94,7 @@ where
     Standard: Distribution<T>,
     BaseOT: Send,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send_random(
         &mut self,
         ctx: &mut Ctx,
@@ -106,6 +110,7 @@ where
     Ctx: Context,
     BaseOT: CommittedOTReceiver<Ctx, bool, Block> + Send + 'static,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn reveal(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         self.inner
             .lock(ctx)

@@ -8,6 +8,7 @@ use std::{
 use futures::{Future, FutureExt, TryFutureExt};
 use serio::{stream::IoStreamExt, IoDuplex, SinkExt};
 use tokio::sync::Mutex;
+use tracing::instrument;
 
 use crate::sync::{SyncError, Ticket};
 
@@ -32,6 +33,7 @@ impl AsyncSyncer {
     ///
     /// * `io` - The I/O channel of the logical thread.
     /// * `fut` - The future to await.
+    #[instrument(level = "trace", skip_all, err)]
     pub async fn sync<Io: IoDuplex + Unpin, Fut>(
         &self,
         io: &mut Io,

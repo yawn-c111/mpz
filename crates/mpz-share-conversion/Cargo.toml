@@ -23,6 +23,7 @@ thiserror.workspace = true
 async-trait.workspace = true
 serio.workspace = true
 rand.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 mpz-ole = { workspace = true, features = ["ideal"] }

@@ -11,6 +11,7 @@ mpz-cointoss-core.workspace = true
 futures.workspace = true
 serio.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 mpz-common = { workspace = true, features = ["test-utils"] }

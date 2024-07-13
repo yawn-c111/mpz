@@ -8,6 +8,7 @@ use mpz_ole_core::{msg::BatchAdjust, BatchSenderAdjust, OLESender as OLECoreSend
 use mpz_ot::{OTError, RandomOTSender};
 use rand::thread_rng;
 use serio::{stream::IoStreamExt, Deserialize, Serialize, SinkExt};
+use tracing::instrument;
 
 /// OLE sender.
 #[derive(Debug)]
@@ -64,6 +65,7 @@ where
 {
     type Error = OLEError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), OLEError> {
         let count = mem::take(&mut self.alloc);
         if count == 0 {
@@ -97,6 +99,7 @@ impl<T: Send, F, Ctx: Context> OLESend<Ctx, F> for OLESender<T, F>
 where
     F: Field + Serialize + Deserialize,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send(&mut self, ctx: &mut Ctx, a_k: Vec<F>) -> Result<Vec<F>, OLEError> {
         let (sender_adjust, adjust) = self.adjust(a_k)?;
 

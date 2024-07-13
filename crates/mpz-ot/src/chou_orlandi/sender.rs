@@ -9,6 +9,7 @@ use mpz_core::Block;
 use mpz_ot_core::chou_orlandi::{sender_state as state, Sender as SenderCore, SenderConfig};
 use rand::{thread_rng, Rng};
 use serio::{stream::IoStreamExt, SinkExt as _};
+use tracing::instrument;
 use utils_aio::non_blocking_backend::{Backend, NonBlockingBackend};
 
 use enum_try_as_inner::EnumTryAsInner;
@@ -69,6 +70,7 @@ impl Sender {
 
 #[async_trait]
 impl<Ctx: Context> OTSetup<Ctx> for Sender {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn setup(&mut self, ctx: &mut Ctx) -> Result<(), OTError> {
         if self.state.is_setup() {
             return Ok(());
@@ -101,6 +103,7 @@ impl<Ctx: Context> OTSetup<Ctx> for Sender {
 
 #[async_trait]
 impl<Ctx: Context> OTSender<Ctx, [Block; 2]> for Sender {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn send(
         &mut self,
         ctx: &mut Ctx,
@@ -133,6 +136,7 @@ impl<Ctx: Context> OTSender<Ctx, [Block; 2]> for Sender {
 
 #[async_trait]
 impl<Ctx: Context> VerifiableOTSender<Ctx, bool, [Block; 2]> for Sender {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn verify_choices(&mut self, ctx: &mut Ctx) -> Result<Vec<bool>, OTError> {
         let sender = std::mem::replace(&mut self.state, State::Error)
             .try_into_setup()

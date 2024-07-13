@@ -2,6 +2,7 @@
 
 use pollster::FutureExt;
 use tokio::sync::{Mutex as TokioMutex, MutexGuard};
+use tracing::instrument;
 
 use crate::{
     context::Context,
@@ -54,6 +55,7 @@ impl<T> AsyncMutex<T> {
     }
 
     /// Returns a lock on the mutex.
+    #[instrument(level = "trace", fields(thread = %ctx.id()), skip_all, err)]
     pub async fn lock<Ctx: Context>(&self, ctx: &mut Ctx) -> Result<MutexGuard<'_, T>, MutexError> {
         self.syncer
             .sync(ctx.io_mut(), self.inner.lock())

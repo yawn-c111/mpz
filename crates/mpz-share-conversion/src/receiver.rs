@@ -6,6 +6,7 @@ use mpz_ole::{OLEError, OLEReceiver};
 use mpz_share_conversion_core::{a2m_convert_receiver, msgs::Masks, A2MMasks};
 use serio::{stream::IoStreamExt, Deserialize, Serialize};
 use std::marker::PhantomData;
+use tracing::instrument;
 
 /// Receiver for share conversion.
 #[derive(Debug)]
@@ -52,6 +53,7 @@ where
 {
     type Error = ShareConversionError;
 
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn preprocess(&mut self, ctx: &mut Ctx) -> Result<(), ShareConversionError> {
         self.ole_receiver
             .preprocess(ctx)
@@ -67,6 +69,7 @@ where
     F: Field + Serialize + Deserialize,
     Ctx: Context,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn to_additive(
         &mut self,
         ctx: &mut Ctx,
@@ -86,6 +89,7 @@ where
     F: Field + Serialize + Deserialize,
     Ctx: Context,
 {
+    #[instrument(level = "debug", fields(thread = %ctx.id()), skip_all, err)]
     async fn to_multiplicative(
         &mut self,
         ctx: &mut Ctx,
