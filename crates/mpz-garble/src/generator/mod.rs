@@ -269,8 +269,10 @@ impl Generator {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
         };
+        trace!("Entering generate");
 
         let (delta, inputs) = {
+            trace!("Accessing state");
             let state = self.state();
 
             // If the circuit has already been garbled, return early
@@ -302,6 +304,7 @@ impl Generator {
 
             (delta, inputs)
         };
+        trace!("Computed delta and inputs");
 
         // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
         let span = span!(Level::TRACE, "worker");
