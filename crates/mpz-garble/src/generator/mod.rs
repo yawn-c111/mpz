@@ -68,7 +68,6 @@ impl Generator {
     }
 
     /// Convenience method for grabbing a lock to the state.
-    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()))]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
         self.state.lock().unwrap()
     }
