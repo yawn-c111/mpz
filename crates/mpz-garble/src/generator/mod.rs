@@ -20,7 +20,7 @@ use mpz_garble_core::{
     Generator as GeneratorCore, GeneratorOutput,
 };
 use serio::SinkExt;
-use tracing::{span, Level};
+use tracing::{span, trace, Level};
 
 use crate::{
     memory::EncodingMemory,
@@ -310,8 +310,10 @@ impl Generator {
             hash,
         } = ctx
             .blocking(scoped!(move |ctx| async move {
+                trace!("entering span");
                 let _enter = span.enter();
                 let mut gen = GeneratorCore::default();
+                trace!("generating batched");
                 let mut gen_iter = gen.generate_batched(&circ, delta, inputs)?;
                 let io = ctx.io_mut();
 
@@ -319,10 +321,12 @@ impl Generator {
                     gen_iter.enable_hasher();
                 }
 
+                trace!("feeding batches to io");
                 while let Some(batch) = gen_iter.by_ref().next() {
                     io.feed(batch).await?;
                 }
 
+                trace!("finishing garbling iteration");
                 gen_iter.finish().map_err(GeneratorError::from)
             }))
             .await??;
@@ -335,6 +339,7 @@ impl Generator {
             ctx.io_mut().feed(commitments).await?;
         }
 
+        trace!("Flushing io");
         ctx.io_mut().flush().await?;
 
         // Add the outputs to the memory and set as active.
