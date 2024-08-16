@@ -237,7 +237,7 @@ pub(crate) fn trace_impl(args: TokenStream, item: TokenStream) -> TokenStream {
                 use std::{cell::RefCell, collections::HashMap, sync::Mutex};
                 use ::mpz_circuits::{once_cell::sync::Lazy, CircuitBuilder, Circuit, ops::*};
                 static CACHE: Lazy<Mutex<HashMap<#const_arg_ty, Circuit>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-                let mut cache = CACHE.lock().unwrap();
+                let mut cache = CACHE.try_lock().unwrap();
                 let circ = {
                     if let Some(cached) = cache.get(&(#(#const_arg_ident),*)) {
                         cached
