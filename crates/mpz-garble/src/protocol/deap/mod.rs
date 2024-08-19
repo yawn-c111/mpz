@@ -135,7 +135,7 @@ impl DEAP {
         }
     }
 
-    #[tracing::instrument(fields(role = %self.role, thread = %ctx.id()))]
+    #[tracing::instrument(fields(role = %self.role))]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
         self.state.lock().unwrap()
     }
