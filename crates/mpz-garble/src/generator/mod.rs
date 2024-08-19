@@ -70,7 +70,7 @@ impl Generator {
     /// Convenience method for grabbing a lock to the state.
     #[tracing::instrument(skip_all)]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
-        self.state.lock().unwrap()
+        self.state.try_lock().unwrap()
     }
 
     /// Returns the seed used to generate encodings.
