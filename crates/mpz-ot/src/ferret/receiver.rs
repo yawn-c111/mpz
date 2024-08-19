@@ -19,8 +19,8 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) enum State {
-    Initialized(ReceiverCore<state::Initialized>),
-    Extension(ReceiverCore<state::Extension>),
+    Initialized(Box<ReceiverCore<state::Initialized>>),
+    Extension(Box<ReceiverCore<state::Extension>>),
     Error,
 }
 
@@ -50,7 +50,7 @@ impl<RandomCOT> Receiver<RandomCOT> {
     /// * `rcot` - The random COT in setup.
     pub fn new(config: FerretConfig, rcot: RandomCOT) -> Self {
         Self {
-            state: State::Initialized(ReceiverCore::new()),
+            state: State::Initialized(Box::new(ReceiverCore::new())),
             config,
             rcot,
             alloc: 0,
@@ -119,7 +119,7 @@ impl<RandomCOT> Receiver<RandomCOT> {
 
         ctx.io_mut().send(seed).await?;
 
-        self.state = State::Extension(receiver);
+        self.state = State::Extension(Box::new(receiver));
 
         Ok(())
     }
@@ -245,7 +245,7 @@ impl<Ctx> RandomCOTReceiver<Ctx, bool, Block> for ReceiverBuffer {
         let choices = self.buffer.choices.drain(0..count).collect();
         let msgs = self.buffer.msgs.drain(0..count).collect();
         Ok(RCOTReceiverOutput {
-            id: self.buffer.id.next(),
+            id: self.buffer.id.next_id(),
             choices,
             msgs,
         })

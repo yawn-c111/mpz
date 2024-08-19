@@ -262,7 +262,7 @@ impl<Ctx> RandomCOTSender<Ctx, Block> for SenderBuffer {
 
         let msgs = self.buffer.msgs.drain(0..count).collect();
         Ok(RCOTSenderOutput {
-            id: self.buffer.id.next(),
+            id: self.buffer.id.next_id(),
             msgs,
         })
     }

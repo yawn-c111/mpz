@@ -119,7 +119,7 @@ impl Receiver<state::Extension> {
             return Err(ReceiverError("the length of r should be n".to_string()));
         }
 
-        self.state.id.next();
+        self.state.id.next_id();
 
         // Compute z = A * w + r.
         let mut z = r;
@@ -169,7 +169,7 @@ impl Receiver<state::Extension> {
         let msgs = self.state.msgs_buffer.drain(0..count).collect();
 
         Ok(RCOTReceiverOutput {
-            id: self.state.id.next(),
+            id: self.state.id.next_id(),
             choices,
             msgs,
         })

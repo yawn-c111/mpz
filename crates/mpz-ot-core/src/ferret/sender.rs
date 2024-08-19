@@ -109,7 +109,7 @@ impl Sender<state::Extension> {
             return Err(SenderError("the length of s should be n".to_string()));
         }
 
-        self.state.id.next();
+        self.state.id.next_id();
 
         // Compute y = A * v + s
         let mut y = s;
@@ -139,7 +139,7 @@ impl Sender<state::Extension> {
         let msgs = self.state.msgs_buffer.drain(0..count).collect();
 
         Ok(RCOTSenderOutput {
-            id: self.state.id.next(),
+            id: self.state.id.next_id(),
             msgs,
         })
     }

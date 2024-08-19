@@ -57,7 +57,6 @@ pub(crate) async fn send<Ctx: Context, RandomCOT: RandomCOTSender<Ctx, Block>>(
     let (output, check_msg) = CpuBackend::blocking(move || {
         sender
             .check(&y_star, checkfr)
-            .map(|(output, check_msg)| (output, check_msg))
     })
     .await?;
 
@@ -130,7 +129,7 @@ pub(crate) async fn receive<Ctx: Context, RandomCOT: RandomCOTReceiver<Ctx, bool
     let check = ctx.io_mut().expect_next().await?;
 
     let output =
-        CpuBackend::blocking(move || receiver.check(&z_star, check).map(|output| output)).await?;
+        CpuBackend::blocking(move || receiver.check(&z_star, check)).await?;
 
     Ok(output)
 }
