@@ -137,7 +137,7 @@ impl DEAP {
 
     #[tracing::instrument(fields(role = %self.role,), skip_all)]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
-        self.state.try_lock().unwrap()
+        self.state.lock().unwrap()
     }
 
     /// Commits the provided input values.

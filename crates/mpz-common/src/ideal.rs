@@ -36,7 +36,7 @@ impl<F> Clone for Alice<F> {
 impl<F> Alice<F> {
     /// Returns a lock to the ideal functionality.
     pub fn get_mut(&mut self) -> MutexGuard<'_, F> {
-        self.f.try_lock().unwrap()
+        self.f.lock().unwrap()
     }
 
     /// Calls the ideal functionality.
@@ -50,14 +50,14 @@ impl<F> Alice<F> {
         OB: Send + 'static,
     {
         let receiver = {
-            let mut buffer = self.buffer.try_lock().unwrap();
+            let mut buffer = self.buffer.lock().unwrap();
             if let Some((input_bob, ret_bob)) = buffer.bob.remove(ctx.id()) {
                 let input_bob = *input_bob
                     .downcast()
                     .expect("alice received correct input type for bob");
 
                 let (output_alice, output_bob) =
-                    call(&mut self.f.try_lock().unwrap(), input, input_bob);
+                    call(&mut self.f.lock().unwrap(), input, input_bob);
 
                 _ = ret_bob.send(Box::new(output_bob));
 
@@ -97,7 +97,7 @@ impl<F> Clone for Bob<F> {
 impl<F> Bob<F> {
     /// Returns a lock to the ideal functionality.
     pub fn get_mut(&mut self) -> MutexGuard<'_, F> {
-        self.f.try_lock().unwrap()
+        self.f.lock().unwrap()
     }
 
     /// Calls the ideal functionality.
@@ -111,14 +111,14 @@ impl<F> Bob<F> {
         OB: Send + 'static,
     {
         let receiver = {
-            let mut buffer = self.buffer.try_lock().unwrap();
+            let mut buffer = self.buffer.lock().unwrap();
             if let Some((input_alice, ret_alice)) = buffer.alice.remove(ctx.id()) {
                 let input_alice = *input_alice
                     .downcast()
                     .expect("bob received correct input type for alice");
 
                 let (output_alice, output_bob) =
-                    call(&mut self.f.try_lock().unwrap(), input_alice, input);
+                    call(&mut self.f.lock().unwrap(), input_alice, input);
 
                 _ = ret_alice.send(Box::new(output_alice));
 
