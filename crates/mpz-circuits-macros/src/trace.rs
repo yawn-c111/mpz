@@ -232,41 +232,7 @@ pub(crate) fn trace_impl(args: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     trace_fn.block = if cache {
-        parse_quote! {
-            {
-                use std::{cell::RefCell, collections::HashMap, sync::Mutex};
-                use ::mpz_circuits::{once_cell::sync::Lazy, CircuitBuilder, Circuit, ops::*};
-                static CACHE: Lazy<Mutex<HashMap<#const_arg_ty, Circuit>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-                let mut cache = CACHE.lock().unwrap();
-                let circ = {
-                    if let Some(cached) = cache.get(&(#(#const_arg_ident),*)) {
-                        cached
-                    } else {
-                        let builder = CircuitBuilder::new();
-
-                        let output = {
-                            #(#dyn_arg_stmt)*
-                            #block
-                        };
-
-                        #(#output_expr;)*
-
-                        let circ = builder.build().expect(stringify!(#fn_name should build successfully));
-
-                        cache.insert((#(#const_arg_ident),*), circ);
-                        cache.get(&(#(#const_arg_ident),*)).unwrap()
-                    }
-                };
-
-                #(
-                    let #dyn_arg_ident = #dyn_arg_ident.into();
-                )*
-
-                let output = state.borrow_mut().append(circ, &[#(#dyn_arg_ident),*]).expect(stringify!(#fn_name should append successfully));
-
-                #return_expr
-            }
-        }
+        panic!("Attempted to use circuit cache")
     } else {
         parse_quote! {
             #block
