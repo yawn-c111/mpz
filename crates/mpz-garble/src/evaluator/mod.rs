@@ -82,7 +82,7 @@ impl Evaluator {
     }
 
     /// Convenience method for grabbing a lock to the state.
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
         self.state.lock().unwrap()
     }
