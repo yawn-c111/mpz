@@ -68,6 +68,7 @@ impl Generator {
     }
 
     /// Convenience method for grabbing a lock to the state.
+    #[tracing::instrument]
     fn state(&self) -> impl DerefMut<Target = State> + '_ {
         self.state.lock().unwrap()
     }
