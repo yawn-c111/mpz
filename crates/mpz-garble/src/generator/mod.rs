@@ -150,6 +150,7 @@ impl Generator {
         values: &AssignedValues,
         ot: &mut OT,
     ) -> Result<(), GeneratorError> {
+        println!("Inside setup_assigned_values");
         let ot_send_values = values.blind.clone();
         let mut direct_send_values = values.public.clone();
         direct_send_values.extend(values.private.iter().cloned());
@@ -166,6 +167,7 @@ impl Generator {
         )
         .await??;
 
+        println!("Finished setup_assigned_values");
         Ok(())
     }
 
@@ -183,6 +185,7 @@ impl Generator {
         values: &[(ValueId, ValueType)],
         ot: &mut OT,
     ) -> Result<(), GeneratorError> {
+        println!("Inside ot_send_active_encodings");
         if values.is_empty() {
             return Ok(());
         }
@@ -204,6 +207,7 @@ impl Generator {
 
         ot.send(ctx, full_encodings).await?;
 
+        println!("Finished ot_send_active_encodings");
         Ok(())
     }
 
@@ -219,6 +223,7 @@ impl Generator {
         ctx: &mut Ctx,
         values: &[(ValueId, Value)],
     ) -> Result<(), GeneratorError> {
+        println!("Inside direct_send_active_encodings");
         if values.is_empty() {
             return Ok(());
         }
@@ -243,6 +248,7 @@ impl Generator {
 
         ctx.io_mut().send(active_encodings).await?;
 
+        println!("Finished direct_send_active_encodings");
         Ok(())
     }
 
@@ -270,7 +276,7 @@ impl Generator {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
         };
-        trace!("Entering generate");
+        println!("Inside generate");
 
         let (delta, inputs) = {
             trace!("Accessing state");
@@ -355,6 +361,7 @@ impl Generator {
 
         state.garbled.insert(refs, hash);
 
+        println!("Finished generate");
         Ok((encoded_outputs, hash))
     }
 

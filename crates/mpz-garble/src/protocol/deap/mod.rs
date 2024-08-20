@@ -301,6 +301,7 @@ impl DEAP {
         OTS: OTSendEncoding<Ctx> + Send,
         OTR: OTReceiveEncoding<Ctx> + Send,
     {
+        println!("Inside execute with {}", self.role);
         let assigned_values = self.state().memory.drain_assigned(inputs);
 
         match self.role {
@@ -356,6 +357,7 @@ impl DEAP {
             }
         };
 
+        println!("Finished execute with {}", self.role);
         Ok(())
     }
 
