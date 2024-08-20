@@ -308,14 +308,12 @@ impl Generator {
         trace!("Computed delta and inputs");
 
         // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
-        let span = span!(Level::TRACE, "worker");
         let GeneratorOutput {
             outputs: encoded_outputs,
             hash,
         } = ctx
             .blocking(scoped!(move |ctx| async move {
                 trace!("entering span");
-                let _enter = span.enter();
                 let mut gen = GeneratorCore::default();
                 trace!("generating batched");
                 let mut gen_iter = gen.generate_batched(&circ, delta, inputs)?;
