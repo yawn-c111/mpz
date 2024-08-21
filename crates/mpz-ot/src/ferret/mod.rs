@@ -44,6 +44,138 @@ impl FerretConfig {
     }
 }
 
+/// Ferret config with regular LPN parameters.
+/// Parameters for setup with small extension output.
+pub const FERRET_REGULAR_SETUP_SMALL: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 102_400,
+        k: 6_750,
+        t: 1_600,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with regular LPN parameters.
+/// Parameters for extension with small extension output.
+pub const FERRET_REGULAR_EXTENSION_SMALL: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 1_740_800,
+        k: 66_400,
+        t: 1700,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with regular LPN parameters.
+/// Parameters for setup with medium extension output.
+pub const FERRET_REGULAR_SETUP_MEDIUM: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 283_648,
+        k: 18_584,
+        t: 1_108,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with regular LPN parameters.
+/// Parameters for extension with medium extension output.
+pub const FERRET_REGULAR_EXTENSION_MEDIUM: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 5_324_800,
+        k: 240_000,
+        t: 1_300,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with regular LPN parameters.
+/// Parameters for setup with large extension output.
+pub const FERRET_REGULAR_SETUP_LARGE: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 518_656,
+        k: 34_643,
+        t: 1_013,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with regular LPN parameters.
+/// Parameters for extension with large extension output.
+pub const FERRET_REGULAR_EXTENSION_LARGE: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 10_485_760,
+        k: 458_000,
+        t: 1280,
+    },
+    lpn_type: LpnType::Regular,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for setup with small extension output.
+pub const FERRET_UNIFORM_SETUP_SMALL: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 98_000,
+        k: 4_450,
+        t: 1_600,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for extension with small extension output.
+pub const FERRET_UNIFORM_EXTENSION_SMALL: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 1_071_888,
+        k: 40_800,
+        t: 1720,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for setup with medium extension output.
+pub const FERRET_UNIFORM_SETUP_MEDIUM: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 283_648,
+        k: 18_584,
+        t: 1_108,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for extension with medium extension output.
+pub const FERRET_UNIFORM_EXTENSION_MEDIUM: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 5_324_800,
+        k: 240_000,
+        t: 1_300,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for setup with large extension output.
+pub const FERRET_UNIFORM_SETUP_LARGE: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 545_656,
+        k: 34_643,
+        t: 1_050,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
+/// Ferret config with uniform LPN parameters.
+/// Parameters for extension with large extension output.
+pub const FERRET_UNIFORM_EXTENSION_LARGE: FerretConfig = FerretConfig {
+    lpn_parameters: LpnParameters {
+        n: 10_488_928,
+        k: 458_000,
+        t: 1_280,
+    },
+    lpn_type: LpnType::Uniform,
+};
+
 #[cfg(test)]
 mod tests {
     use super::*;

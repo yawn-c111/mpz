@@ -1,7 +1,4 @@
 //! An implementation of the [`Ferret`](https://eprint.iacr.org/2020/924.pdf) protocol.
-
-use mpz_core::lpn::LpnParameters;
-
 pub mod cuckoo;
 pub mod error;
 pub mod mpcot;
@@ -18,22 +15,6 @@ pub const CUCKOO_HASH_NUM: usize = 3;
 
 /// Trial numbers in Cuckoo hash insertion.
 pub const CUCKOO_TRIAL_NUM: usize = 100;
-
-/// LPN parameters with regular noise.
-/// Derived from https://github.com/emp-toolkit/emp-ot/blob/master/emp-ot/ferret/constants.h
-pub const LPN_PARAMETERS_REGULAR: LpnParameters = LpnParameters {
-    n: 10_180_608,
-    k: 124_000,
-    t: 4_971,
-};
-
-/// LPN parameters with uniform noise.
-/// Derived from Table 2.
-pub const LPN_PARAMETERS_UNIFORM: LpnParameters = LpnParameters {
-    n: 10_616_092,
-    k: 588_160,
-    t: 1_324,
-};
 
 /// The type of Lpn parameters.
 #[derive(Debug, Clone, Copy, Default)]
