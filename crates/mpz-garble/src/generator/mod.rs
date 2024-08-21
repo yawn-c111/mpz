@@ -185,7 +185,6 @@ impl Generator {
         values: &[(ValueId, ValueType)],
         ot: &mut OT,
     ) -> Result<(), GeneratorError> {
-        println!("Inside ot_send_active_encodings");
         if values.is_empty() {
             return Ok(());
         }
@@ -207,7 +206,6 @@ impl Generator {
 
         ot.send(ctx, full_encodings).await?;
 
-        println!("Finished ot_send_active_encodings");
         Ok(())
     }
 
