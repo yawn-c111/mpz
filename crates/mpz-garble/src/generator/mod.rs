@@ -276,10 +276,8 @@ impl Generator {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
         };
-        println!("Inside generate");
 
         let (delta, inputs) = {
-            trace!("Accessing state");
             let state = self.state();
 
             // If the circuit has already been garbled, return early
@@ -361,7 +359,6 @@ impl Generator {
 
         state.garbled.insert(refs, hash);
 
-        println!("Finished generate");
         Ok((encoded_outputs, hash))
     }
 
