@@ -221,7 +221,6 @@ impl Generator {
         ctx: &mut Ctx,
         values: &[(ValueId, Value)],
     ) -> Result<(), GeneratorError> {
-        println!("Inside direct_send_active_encodings");
         if values.is_empty() {
             return Ok(());
         }
@@ -246,7 +245,6 @@ impl Generator {
 
         ctx.io_mut().send(active_encodings).await?;
 
-        println!("Finished direct_send_active_encodings");
         Ok(())
     }
 
