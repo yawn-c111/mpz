@@ -268,6 +268,7 @@ impl Generator {
         outputs: &[ValueRef],
         hash: bool,
     ) -> Result<(Vec<EncodedValue<encoding_state::Full>>, Option<Hash>), GeneratorError> {
+        println!("Inside generate");
         let refs = CircuitRefs {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
@@ -355,6 +356,7 @@ impl Generator {
 
         state.garbled.insert(refs, hash);
 
+        println!("Finished generate");
         Ok((encoded_outputs, hash))
     }
 

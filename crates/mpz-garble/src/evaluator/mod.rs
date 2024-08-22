@@ -370,6 +370,7 @@ impl Evaluator {
         inputs: &[ValueRef],
         outputs: &[ValueRef],
     ) -> Result<Vec<EncodedValue<encoding_state::Active>>, EvaluatorError> {
+        println!("Inside evaluate");
         let refs = CircuitRefs {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
@@ -483,6 +484,7 @@ impl Evaluator {
             ));
         }
 
+        println!("Finished evaluate");
         Ok(encoded_outputs)
     }
 
