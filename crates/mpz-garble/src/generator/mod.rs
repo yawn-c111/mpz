@@ -306,7 +306,7 @@ impl Generator {
 
             (delta, inputs)
         };
-        trace!("Computed delta and inputs");
+        println!("Computed delta and inputs");
 
         // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
         let GeneratorOutput {
@@ -314,9 +314,8 @@ impl Generator {
             hash,
         } = ctx
             .blocking(scoped!(move |ctx| async move {
-                trace!("entering span");
                 let mut gen = GeneratorCore::default();
-                trace!("generating batched");
+                println!("generating batched");
                 let mut gen_iter = gen.generate_batched(&circ, delta, inputs)?;
                 let io = ctx.io_mut();
 
@@ -324,10 +323,10 @@ impl Generator {
                     gen_iter.enable_hasher();
                 }
 
-                trace!("feeding batches to io");
                 while let Some(batch) = gen_iter.by_ref().next() {
                     io.feed(batch).await?;
                 }
+                println!("Fed batches to io");
 
                 trace!("finishing garbling iteration");
                 gen_iter.finish().map_err(GeneratorError::from)
@@ -342,8 +341,9 @@ impl Generator {
             ctx.io_mut().feed(commitments).await?;
         }
 
-        trace!("Flushing io");
+        println!("Flushing io");
         ctx.io_mut().flush().await?;
+        println!("Flushed io");
 
         // Add the outputs to the memory and set as active.
         let mut state = self.state();
