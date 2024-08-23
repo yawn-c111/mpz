@@ -390,6 +390,7 @@ impl Evaluator {
         };
 
         let existing_garbled_circuit = self.state().garbled_circuits.remove(&refs);
+        print!("Fetched optional existing_garbled_circuit");
 
         // If we've already received the garbled circuit, we evaluate it, otherwise we stream the encrypted gates
         // from the generator.
@@ -397,6 +398,7 @@ impl Evaluator {
             outputs: encoded_outputs,
             hash,
         } = if let Some(GarbledCircuit { gates, commitments }) = existing_garbled_circuit {
+            print!("circuit present for evaluator");
             let circ = circ.clone();
             let hash = self.config.log_circuits;
             let output = CpuBackend::blocking(move || {
@@ -427,6 +429,7 @@ impl Evaluator {
 
             output
         } else {
+            print!("receiving circuit for evaluator");
             let circ = circ.clone();
             let hash = self.config.log_circuits;
             let output = ctx
@@ -466,6 +469,7 @@ impl Evaluator {
 
             output
         };
+        println!("circuit done for evaluator");
 
         // Add the output encodings to the memory.
         let mut state = self.state();
