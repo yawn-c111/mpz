@@ -390,7 +390,7 @@ impl Evaluator {
         };
 
         let existing_garbled_circuit = self.state().garbled_circuits.remove(&refs);
-        print!("Fetched optional existing_garbled_circuit");
+        println!("Fetched optional existing_garbled_circuit");
 
         // If we've already received the garbled circuit, we evaluate it, otherwise we stream the encrypted gates
         // from the generator.
