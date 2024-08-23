@@ -12,6 +12,7 @@ use std::{
     mem,
     ops::DerefMut,
     sync::{Arc, Mutex},
+    thread,
 };
 
 use futures::TryFutureExt;
@@ -301,7 +302,11 @@ impl DEAP {
         OTS: OTSendEncoding<Ctx> + Send,
         OTR: OTReceiveEncoding<Ctx> + Send,
     {
-        println!("Inside execute with {}", self.role);
+        println!(
+            "THREAD: {:?}, Inside execute with {}",
+            thread::current().id(),
+            self.role
+        );
         let assigned_values = self.state().memory.drain_assigned(inputs);
 
         match self.role {
@@ -357,7 +362,11 @@ impl DEAP {
             }
         };
 
-        println!("Finished execute with {}", self.role);
+        println!(
+            "THREAD: {:?}, Finished execute with {}",
+            thread::current().id(),
+            self.role
+        );
         Ok(())
     }
 

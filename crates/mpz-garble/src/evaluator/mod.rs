@@ -8,6 +8,7 @@ use std::{
     mem,
     ops::DerefMut,
     sync::{Arc, Mutex},
+    thread,
 };
 
 use mpz_circuits::{
@@ -370,7 +371,7 @@ impl Evaluator {
         inputs: &[ValueRef],
         outputs: &[ValueRef],
     ) -> Result<Vec<EncodedValue<encoding_state::Active>>, EvaluatorError> {
-        println!("Inside evaluate");
+        println!("THREAD: {:?}, Inside evaluate", thread::current().id());
         let refs = CircuitRefs {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
@@ -390,7 +391,10 @@ impl Evaluator {
         };
 
         let existing_garbled_circuit = self.state().garbled_circuits.remove(&refs);
-        println!("Fetched optional existing_garbled_circuit");
+        println!(
+            "THREAD: {:?}, Fetched optional existing_garbled_circuit",
+            thread::current().id()
+        );
 
         // If we've already received the garbled circuit, we evaluate it, otherwise we stream the encrypted gates
         // from the generator.
@@ -467,7 +471,10 @@ impl Evaluator {
 
             output
         };
-        println!("circuit done for evaluator");
+        println!(
+            "THREAD: {:?}, circuit done for evaluator",
+            thread::current().id()
+        );
 
         // Add the output encodings to the memory.
         let mut state = self.state();
@@ -486,7 +493,7 @@ impl Evaluator {
             ));
         }
 
-        println!("Finished evaluate");
+        println!("THREAD: {:?}, Finished evaluate", thread::current().id());
         Ok(encoded_outputs)
     }
 

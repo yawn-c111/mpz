@@ -7,6 +7,7 @@ use std::{
     collections::{HashMap, HashSet},
     ops::DerefMut,
     sync::{Arc, Mutex},
+    thread,
 };
 
 use mpz_circuits::{
@@ -150,7 +151,10 @@ impl Generator {
         values: &AssignedValues,
         ot: &mut OT,
     ) -> Result<(), GeneratorError> {
-        println!("Inside setup_assigned_values");
+        println!(
+            "THREAD: {:?}, Inside setup_assigned_values",
+            thread::current().id()
+        );
         let ot_send_values = values.blind.clone();
         let mut direct_send_values = values.public.clone();
         direct_send_values.extend(values.private.iter().cloned());
@@ -167,7 +171,10 @@ impl Generator {
         )
         .await??;
 
-        println!("Finished setup_assigned_values");
+        println!(
+            "THREAD: {:?}, Finished setup_assigned_values",
+            thread::current().id()
+        );
         Ok(())
     }
 
@@ -268,7 +275,7 @@ impl Generator {
         outputs: &[ValueRef],
         hash: bool,
     ) -> Result<(Vec<EncodedValue<encoding_state::Full>>, Option<Hash>), GeneratorError> {
-        println!("Inside generate");
+        println!("THREAD: {:?}, Inside generate", thread::current().id());
         let refs = CircuitRefs {
             inputs: inputs.to_vec(),
             outputs: outputs.to_vec(),
@@ -306,7 +313,10 @@ impl Generator {
 
             (delta, inputs)
         };
-        println!("Computed delta and inputs");
+        println!(
+            "THREAD: {:?}, Computed delta and inputs",
+            thread::current().id()
+        );
 
         // Garble the circuit in batches, streaming the encrypted gates from the worker thread.
         let GeneratorOutput {
@@ -315,7 +325,7 @@ impl Generator {
         } = ctx
             .blocking(scoped!(move |ctx| async move {
                 let mut gen = GeneratorCore::default();
-                println!("generating batched");
+                println!("THREAD: {:?}, generating batched", thread::current().id());
                 let mut gen_iter = gen.generate_batched(&circ, delta, inputs)?;
                 let io = ctx.io_mut();
 
@@ -326,7 +336,7 @@ impl Generator {
                 while let Some(batch) = gen_iter.by_ref().next() {
                     io.feed(batch).await?;
                 }
-                println!("Fed batches to io");
+                println!("THREAD: {:?}, Fed batches to io", thread::current().id());
 
                 trace!("finishing garbling iteration");
                 gen_iter.finish().map_err(GeneratorError::from)
@@ -341,9 +351,9 @@ impl Generator {
             ctx.io_mut().feed(commitments).await?;
         }
 
-        println!("Flushing io");
+        println!("THREAD: {:?}, Flushing io", thread::current().id());
         ctx.io_mut().flush().await?;
-        println!("Flushed io");
+        println!("THREAD: {:?}, Flushed io", thread::current().id());
 
         // Add the outputs to the memory and set as active.
         let mut state = self.state();
@@ -356,7 +366,7 @@ impl Generator {
 
         state.garbled.insert(refs, hash);
 
-        println!("Finished generate");
+        println!("THREAD: {:?}, Finished generate", thread::current().id());
         Ok((encoded_outputs, hash))
     }
 
