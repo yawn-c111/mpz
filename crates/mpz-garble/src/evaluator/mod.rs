@@ -392,8 +392,9 @@ impl Evaluator {
 
         let existing_garbled_circuit = self.state().garbled_circuits.remove(&refs);
         println!(
-            "THREAD: {:?}, Fetched optional existing_garbled_circuit",
-            thread::current().id()
+            "THREAD: {:?}, Fetched optional existing_garbled_circuit: {}",
+            thread::current().id(),
+            existing_garbled_circuit.is_some()
         );
 
         // If we've already received the garbled circuit, we evaluate it, otherwise we stream the encrypted gates
