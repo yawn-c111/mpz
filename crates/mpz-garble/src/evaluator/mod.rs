@@ -445,10 +445,18 @@ impl Evaluator {
                         ev_consumer.enable_hasher();
                     }
 
+                    println!(
+                        "THREAD: {:?}, Evaluator waiting for gc batches",
+                        thread::current().id(),
+                    );
                     while ev_consumer.wants_gates() {
                         let batch: EncryptedGateBatch = io.expect_next().await?;
                         ev_consumer.next(batch);
                     }
+                    println!(
+                        "THREAD: {:?}, Evaluator received all batches",
+                        thread::current().id(),
+                    );
 
                     ev_consumer.finish().map_err(EvaluatorError::from)
                 }))
