@@ -255,55 +255,56 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
+        // let mut flag: bool = true;
         while let Some(gate) = self.gates.next() {
             match gate {
                 Gate::Xor {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
-                } => {
-                    let x_0 = self.labels[node_x.id()];
-                    let y_0 = self.labels[node_y.id()];
-                    self.labels[node_z.id()] = x_0 ^ y_0;
-                }
+                    x, y, z,
+                } | 
                 Gate::And {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
+                    x, y, z,
                 } => {
-                    let x_0 = self.labels[node_x.id()];
-                    let y_0 = self.labels[node_y.id()];
-                    let (z_0, encrypted_gate) =
-                        and_gate(self.cipher, &x_0, &y_0, &self.delta, self.gid);
-                    self.labels[node_z.id()] = z_0;
-
-                    self.gid += 2;
-                    self.counter += 1;
-
-                    if let Some(hasher) = &mut self.hasher {
-                        hasher.update(&encrypted_gate.to_bytes());
+                    match gate {
+                        Gate::Xor{ .. } => {
+                            let x_0 = self.labels[x.id()];
+                            let y_0 = self.labels[y.id()];
+                            self.labels[z.id()] = x_0 ^ y_0;
+                        },
+                        Gate::And { .. } => {
+                            let x_0 = self.labels[x.id()];
+                            let y_0 = self.labels[y.id()];
+                            let (z_0, encrypted_gate) =
+                                and_gate(self.cipher, &x_0, &y_0, &self.delta, self.gid);
+                            self.labels[z.id()] = z_0;
+        
+                            self.gid += 2;
+                            self.counter += 1;
+        
+                            if let Some(hasher) = &mut self.hasher {
+                                hasher.update(&encrypted_gate.to_bytes());
+                            }
+        
+                            // If we have generated all AND gates, we can compute
+                            // the rest of the "free" gates.
+                            if !self.has_gates() {
+                                assert!(self.next().is_none());
+        
+                                self.complete = true;
+                            }
+        
+                            return Some(encrypted_gate);
+                        },
+                        _ => unreachable!(),
                     }
-
-                    // If we have generated all AND gates, we can compute
-                    // the rest of the "free" gates.
-                    if !self.has_gates() {
-                        assert!(self.next().is_none());
-
-                        self.complete = true;
-                    }
-
-                    return Some(encrypted_gate);
                 }
                 Gate::Inv {
-                    x: node_x,
-                    z: node_z,
+                    x, z,
                 } => {
-                    let x_0 = self.labels[node_x.id()];
-                    self.labels[node_z.id()] = x_0 ^ self.delta;
+                    let x_0 = self.labels[x.id()];
+                    self.labels[z.id()] = x_0 ^ self.delta;
                 }
             }
         }
-
         None
     }
 }

@@ -194,45 +194,54 @@ where
     /// Evaluates the next encrypted gate in the circuit.
     #[inline]
     pub fn next(&mut self, encrypted_gate: EncryptedGate) {
-        while let Some(gate) = self.gates.next() {
-            match gate {
-                Gate::Xor {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
-                } => {
-                    let x = self.labels[node_x.id()];
-                    let y = self.labels[node_y.id()];
-                    self.labels[node_z.id()] = x ^ y;
-                }
-                Gate::And {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
-                } => {
-                    let x = self.labels[node_x.id()];
-                    let y = self.labels[node_y.id()];
-                    let z = and_gate(self.cipher, &x, &y, &encrypted_gate, self.gid);
-                    self.labels[node_z.id()] = z;
-
-                    self.gid += 2;
-                    self.counter += 1;
-
-                    if let Some(hasher) = &mut self.hasher {
-                        hasher.update(&encrypted_gate.to_bytes());
+        let mut flag: bool = true;
+        while flag {
+            match self.gates.next() {
+                Some(gate) => {
+                    match gate {
+                        Gate::Xor {
+                            x, y, z,
+                        } | 
+                        Gate::And {
+                            x, y, z,
+                        } => {
+                            match gate {
+                                Gate::Xor{ .. } => {
+                                    let x_label = self.labels[x.id()];
+                                    let y_label = self.labels[y.id()];
+                                    self.labels[z.id()] = x_label ^ y_label;
+                                },
+                                Gate::And { .. } => {
+                                    let x_label = self.labels[x.id()];
+                                    let y_label = self.labels[y.id()];
+                                    let z_label = and_gate(self.cipher, &x_label, &y_label, &encrypted_gate, self.gid);
+                                    self.labels[z.id()] = z_label;
+        
+                                    self.gid += 2;
+                                    self.counter += 1;
+        
+                                    if let Some(hasher) = &mut self.hasher {
+                                        hasher.update(&encrypted_gate.to_bytes());
+                                    }
+        
+                                    // If we have more AND gates to evaluate, return.
+                                    if self.wants_gates() {
+                                        return;
+                                    }
+                                },
+                                _ => unreachable!(),
+                            }
+                        }
+                        Gate::Inv {
+                            x, z,
+                        } => {
+                            let x_label = self.labels[x.id()];
+                            self.labels[z.id()] = x_label;
+                        }
                     }
-
-                    // If we have more AND gates to evaluate, return.
-                    if self.wants_gates() {
-                        return;
-                    }
                 }
-                Gate::Inv {
-                    x: node_x,
-                    z: node_z,
-                } => {
-                    let x = self.labels[node_x.id()];
-                    self.labels[node_z.id()] = x;
+                None => {
+                    flag = false;
                 }
             }
         }
