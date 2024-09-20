@@ -9,7 +9,7 @@ use rand::{distributions::Standard, prelude::Distribution, CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
 
 /// A block of 128 bits
-#[repr(transparent)]
+#[repr(C, align(16))]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Serialize, Deserialize, Pod, Zeroable)]
 pub struct Block([u8; 16]);
 

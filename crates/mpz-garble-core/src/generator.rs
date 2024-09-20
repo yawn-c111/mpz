@@ -255,27 +255,31 @@ where
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(gate) = self.gates.next() {
+        // Cache the labels slice locally for faster access
+        let labels = &mut self.labels;
+        let gates = &mut self.gates;
+
+        while let Some(gate) = gates.next() {
             match gate {
                 Gate::Xor {
                     x: node_x,
                     y: node_y,
                     z: node_z,
                 } => {
-                    let x_0 = self.labels[node_x.id()];
-                    let y_0 = self.labels[node_y.id()];
-                    self.labels[node_z.id()] = x_0 ^ y_0;
+                    let x_0 = labels[node_x.id()];
+                    let y_0 = labels[node_y.id()];
+                    labels[node_z.id()] = x_0 ^ y_0;
                 }
                 Gate::And {
                     x: node_x,
                     y: node_y,
                     z: node_z,
                 } => {
-                    let x_0 = self.labels[node_x.id()];
-                    let y_0 = self.labels[node_y.id()];
+                    let x_0 = labels[node_x.id()];
+                    let y_0 = labels[node_y.id()];
                     let (z_0, encrypted_gate) =
                         and_gate(self.cipher, &x_0, &y_0, &self.delta, self.gid);
-                    self.labels[node_z.id()] = z_0;
+                    labels[node_z.id()] = z_0;
 
                     self.gid += 2;
                     self.counter += 1;
@@ -298,8 +302,8 @@ where
                     x: node_x,
                     z: node_z,
                 } => {
-                    let x_0 = self.labels[node_x.id()];
-                    self.labels[node_z.id()] = x_0 ^ self.delta;
+                    let x_0 = labels[node_x.id()];
+                    labels[node_z.id()] = x_0 ^ self.delta;
                 }
             }
         }

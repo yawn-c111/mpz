@@ -272,6 +272,7 @@ impl<const N: usize, S: LabelState> Index<usize> for Labels<N, S> {
 }
 
 /// Encoded bit label.
+#[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Label(Block);
 
