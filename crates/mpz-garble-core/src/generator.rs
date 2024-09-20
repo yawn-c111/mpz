@@ -261,25 +261,17 @@ where
 
         while let Some(gate) = gates.next() {
             match gate {
-                Gate::Xor {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
-                } => {
-                    let x_0 = labels[node_x.id()];
-                    let y_0 = labels[node_y.id()];
-                    labels[node_z.id()] = x_0 ^ y_0;
+                Gate::Xor { x, y, z, } => {
+                    let x_0 = labels[x.id()];
+                    let y_0 = labels[y.id()];
+                    labels[z.id()] = x_0 ^ y_0;
                 }
-                Gate::And {
-                    x: node_x,
-                    y: node_y,
-                    z: node_z,
-                } => {
-                    let x_0 = labels[node_x.id()];
-                    let y_0 = labels[node_y.id()];
+                Gate::And { x, y, z, } => {
+                    let x_0 = labels[x.id()];
+                    let y_0 = labels[y.id()];
                     let (z_0, encrypted_gate) =
                         and_gate(self.cipher, &x_0, &y_0, &self.delta, self.gid);
-                    labels[node_z.id()] = z_0;
+                    labels[z.id()] = z_0;
 
                     self.gid += 2;
                     self.counter += 1;
@@ -298,12 +290,10 @@ where
 
                     return Some(encrypted_gate);
                 }
-                Gate::Inv {
-                    x: node_x,
-                    z: node_z,
-                } => {
-                    let x_0 = labels[node_x.id()];
-                    labels[node_z.id()] = x_0 ^ self.delta;
+                Gate::Inv { x,
+                    z, } => {
+                    let x_0 = labels[x.id()];
+                    labels[z.id()] = x_0 ^ self.delta;
                 }
             }
         }
